@@ -22,6 +22,12 @@
 #include "../ta-log.h"
 #include <fmt/printf.h>
 
+#ifdef __EMSCRIPTEN__
+#define ZSM_DEBUG(...) ((void)0)
+#else
+#define ZSM_DEBUG(...) logD(__VA_ARGS__)
+#endif
+
 /// DivZSM definitions
 
 #define ZSM_HEADER_SIZE 16
@@ -192,7 +198,7 @@ void DivZSM::writeSync(unsigned char a, unsigned char v) {
 
 void DivZSM::writePSG(unsigned char a, unsigned char v) {
   if (a>=69) {
-    logD("ZSM: ignoring VERA PSG write a=%02x v=%02x",a,v);
+    ZSM_DEBUG("ZSM: ignoring VERA PSG write a=%02x v=%02x",a,v);
     return;
   } else if (a==68) {
     // Sync event
@@ -344,7 +350,7 @@ SafeWriter* DivZSM::finish() {
 }
 
 void DivZSM::flushWrites() {
-  logD("ZSM: flushWrites.... numwrites=%d ticks=%d ymwrites=%d pcmMeta=%d pcmCache=%d pcmData=%d syncCache=%d",numWrites,ticks,ymwrites.size(),pcmMeta.size(),pcmCache.size(),pcmData.size(),syncCache.size());
+  ZSM_DEBUG("ZSM: flushWrites.... numwrites=%d ticks=%d ymwrites=%d pcmMeta=%d pcmCache=%d pcmData=%d syncCache=%d",numWrites,ticks,ymwrites.size(),pcmMeta.size(),pcmCache.size(),pcmData.size(),syncCache.size());
   if (numWrites==0) return;
   bool hasFlushed=false;
   for (unsigned char i=0; i<64; i++) {
@@ -371,10 +377,10 @@ void DivZSM::flushWrites() {
     if (n%ZSM_YM_MAX_WRITES==0) {
       if (ymwrites.size()-n>ZSM_YM_MAX_WRITES) {
         w->writeC((unsigned char)(ZSM_YM_CMD+ZSM_YM_MAX_WRITES));
-        logD("ZSM: YM-write: %d (%02x) [max]",ZSM_YM_MAX_WRITES,ZSM_YM_MAX_WRITES+ZSM_YM_CMD);
+        ZSM_DEBUG("ZSM: YM-write: %d (%02x) [max]",ZSM_YM_MAX_WRITES,ZSM_YM_MAX_WRITES+ZSM_YM_CMD);
       } else {
         w->writeC((unsigned char)(ZSM_YM_CMD+ymwrites.size()-n));
-        logD("ZSM: YM-write: %d (%02x)",ymwrites.size()-n,ZSM_YM_CMD+ymwrites.size()-n);
+        ZSM_DEBUG("ZSM: YM-write: %d (%02x)",ymwrites.size()-n,ZSM_YM_CMD+ymwrites.size()-n);
       }
     }
     n++;
@@ -435,7 +441,7 @@ void DivZSM::flushWrites() {
     it=std::search(pcmData.begin(),pcmData.end(),pcmCache.begin(),pcmCache.end());
     pcmOff=std::distance(pcmData.begin(),it);
     pcmLen=pcmCache.size();
-    logD("ZSM: pcmOff: %d pcmLen: %d",pcmOff,pcmLen);
+    ZSM_DEBUG("ZSM: pcmOff: %d pcmLen: %d",pcmOff,pcmLen);
     if (it==pcmData.end()) {
       pcmData.insert(pcmData.end(),pcmCache.begin(),pcmCache.end());
     }
@@ -505,12 +511,12 @@ void DivZSM::flushWrites() {
 
 void DivZSM::flushTicks() {
   while (ticks>ZSM_DELAY_MAX) {
-    logD("ZSM: write delay %d (max)",ZSM_DELAY_MAX);
+    ZSM_DEBUG("ZSM: write delay %d (max)",ZSM_DELAY_MAX);
     w->writeC((unsigned char)(ZSM_DELAY_CMD+ZSM_DELAY_MAX));
     ticks-=ZSM_DELAY_MAX;
   }
   if (ticks>0) {
-    logD("ZSM: write delay %d",ticks);
+    ZSM_DEBUG("ZSM: write delay %d",ticks);
     w->writeC(ZSM_DELAY_CMD+ticks);
   }
   ticks=0;
@@ -621,6 +627,15 @@ void DivExportZSM::run() {
     zsm.setOptimize(optimize);
 
     while (!done) {
+      if (mustAbort) {
+        done=true;
+        break;
+      }
+      if (e->curSubSong->ordersLen>0 && e->curSubSong->patLen>0) {
+        progress[0].amount=MIN(0.99f,
+          ((float)e->curOrder+((float)e->curRow/(float)e->curSubSong->patLen))/
+          (float)e->curSubSong->ordersLen);
+      }
       if (loopPos==-1) {
         if (loopOrder==e->curOrder && loopRow==e->curRow && loop)
           loopNow=true;
@@ -668,7 +683,7 @@ void DivExportZSM::run() {
         }
         std::vector<DivRegWrite>& writes=e->disCont[i].dispatch->getRegisterWrites();
         if (writes.size()>0)
-          logD("zsmOps: Writing %d messages to chip %d",writes.size(),i);
+          ZSM_DEBUG("zsmOps: Writing %d messages to chip %d",writes.size(),i);
         for (DivRegWrite& write: writes) {
           if (i==YM) {
             if (done && write.addr==0x08 && (write.val&0x78)>0) continue; // don't process keydown on lookahead
@@ -702,6 +717,12 @@ void DivExportZSM::run() {
     e->extValuePresent=false;
   });
 
+  if (mustAbort) {
+    logAppend("aborted.");
+    running=false;
+    return;
+  }
+
   progress[0].amount=1.0f;
 
   logAppend("finished!");
@@ -720,11 +741,7 @@ bool DivExportZSM::go(DivEngine* eng) {
   running=true;
   failed=false;
   mustAbort=false;
-#ifdef __EMSCRIPTEN__
-  run();
-#else
   exportThread=new std::thread(&DivExportZSM::run,this);
-#endif
   return true;
 }
 
@@ -732,6 +749,7 @@ void DivExportZSM::wait() {
   if (exportThread!=NULL) {
     exportThread->join();
     delete exportThread;
+    exportThread=NULL;
   }
 }
 

@@ -33,6 +33,7 @@
 #include <functional>
 #include <initializer_list>
 #include <thread>
+#include <atomic>
 #include "../fixedQueue.h"
 
 class DivWorkPool;
@@ -453,8 +454,8 @@ class DivEngine {
   bool extValuePresent;
   bool repeatPattern;
   bool metronome;
-  bool exporting;
-  bool stopExport;
+  std::atomic<bool> exporting;
+  std::atomic<bool> stopExport;
   bool halted;
   bool forceMono;
   bool clampSamples;

@@ -26,6 +26,7 @@
 void FurnaceGUI::drawExportAudio(bool onWindow) {
   exitDisabledTimer=1;
 
+#ifndef FURNACE_KRI_ONLY
   ImGui::Text(_("Export type:"));
 
   ImGui::Indent();
@@ -39,6 +40,9 @@ void FurnaceGUI::drawExportAudio(bool onWindow) {
     audioExportOptions.mode=DIV_EXPORT_MODE_MANY_CHAN;
   }
   ImGui::Unindent();
+#else
+  audioExportOptions.mode=DIV_EXPORT_MODE_ONE;
+#endif
 
   if (audioExportOptions.mode!=DIV_EXPORT_MODE_MANY_SYS) {
     ImGui::Text(_("Bit depth:"));
@@ -271,8 +275,15 @@ void FurnaceGUI::drawExportVGM(bool onWindow) {
 void FurnaceGUI::drawExportROM(bool onWindow) {
   exitDisabledTimer=1;
 
+#ifdef FURNACE_KRI_ONLY
+  romTarget=DIV_ROM_ZSM;
+  romMultiFile=false;
+  romFilterName="Commander X16 ZSM ROM";
+  romFilterExt=".zsm";
+#endif
   const DivROMExportDef* def=e->getROMExportDef(romTarget);
 
+#ifndef FURNACE_KRI_ONLY
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   if (ImGui::BeginCombo("##ROMTarget",def==NULL?"<select one>":def->name)) {
     for (int i=0; i<DIV_ROM_MAX; i++) {
@@ -296,6 +307,7 @@ void FurnaceGUI::drawExportROM(bool onWindow) {
     }
     ImGui::EndCombo();
   }
+#endif
 
   if (def!=NULL) {
     ImGui::Text("by %s",def->author);
@@ -458,6 +470,17 @@ void FurnaceGUI::drawExportDMF(bool onWindow) {
 }
 
 void FurnaceGUI::drawExport() {
+#ifdef FURNACE_KRI_ONLY
+  switch (curExportType) {
+    case GUI_EXPORT_ROM:
+      drawExportROM(true);
+      break;
+    case GUI_EXPORT_AUDIO:
+    default:
+      drawExportAudio(true);
+      break;
+  }
+#else
   if (settings.exportOptionsLayout==1 || curExportType==GUI_EXPORT_NONE) {
     if (ImGui::BeginTabBar("ExportTypes")) {
       if (ImGui::BeginTabItem(_("Audio"))) {
@@ -541,6 +564,7 @@ void FurnaceGUI::drawExport() {
       }
       break;
   }
+#endif
   if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
     ImGui::CloseCurrentPopup();
   }

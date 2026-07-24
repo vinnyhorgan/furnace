@@ -19,13 +19,16 @@
 
 #include "../export.h"
 
+#include <atomic>
 #include <thread>
 
 class DivExportZSM: public DivROMExport {
   DivEngine* e;
-  std::thread* exportThread;
+  std::thread* exportThread=NULL;
   DivROMExportProgress progress[2];
-  bool running, failed, mustAbort;
+  std::atomic<bool> running{false};
+  std::atomic<bool> failed{false};
+  std::atomic<bool> mustAbort{false};
   void run();
   public:
     bool go(DivEngine* e);

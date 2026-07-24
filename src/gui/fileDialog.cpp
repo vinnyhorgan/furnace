@@ -251,13 +251,27 @@ bool FurnaceGUIFileDialog::openSave(String header, std::vector<String> filter, S
 #ifdef __EMSCRIPTEN__
   fileName.clear();
   hasError=false;
+  String suggested=hint.empty()?"song":hint;
+  if (filter.size()>1) {
+    String extension=filter[1];
+    size_t extensionPos=extension.find('.');
+    if (extensionPos!=String::npos) {
+      extension=extension.substr(extensionPos);
+      size_t separatorPos=extension.find(' ');
+      if (separatorPos!=String::npos) extension=extension.substr(0,separatorPos);
+      if (suggested.size()<extension.size() ||
+          suggested.compare(suggested.size()-extension.size(),extension.size(),extension)!=0) {
+        suggested+=extension;
+      }
+    }
+  }
   char* picked=(char*)EM_ASM_PTR({
-    const suggested=UTF8ToString($0) || 'song.fur';
+    const suggested=UTF8ToString($0) || 'song';
     const value=window.prompt('Save as',suggested);
     if (!value) return 0;
     const safe=value.replace(/[^A-Za-z0-9._ -]/g,'_');
     return stringToNewUTF8('/tmp/'+safe);
-  },hint.c_str());
+  },suggested.c_str());
   if (picked!=NULL) {
     fileName.push_back(picked);
     free(picked);
@@ -451,6 +465,7 @@ void FurnaceGUIFileDialog::close() {
 
 bool FurnaceGUIFileDialog::render(const ImVec2& min, const ImVec2& max) {
 #ifdef __EMSCRIPTEN__
+  if (!opened) return false;
   if (dialogType==1) return true;
   char* picked=(char*)EM_ASM_PTR({
     if (!Module.furnaceFilePickerDone) return 0;

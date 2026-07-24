@@ -147,7 +147,7 @@ if (EMSCRIPTEN)
   set(BUILD_GUI ON CACHE BOOL "Build the tracker" FORCE)
   set(USE_SDL2 ON CACHE BOOL "Build with SDL2" FORCE)
   set(SYSTEM_SDL2 OFF CACHE BOOL "Use vendored SDL2" FORCE)
-  set(USE_SNDFILE OFF CACHE BOOL "Build with libsndfile" FORCE)
+  set(USE_SNDFILE ON CACHE BOOL "Build with libsndfile" FORCE)
   set(USE_RTMIDI OFF CACHE BOOL "Build with MIDI support" FORCE)
   set(WITH_PORTAUDIO OFF CACHE BOOL "Build with PortAudio" FORCE)
   set(WITH_JACK OFF CACHE BOOL "Build with JACK" FORCE)
@@ -159,6 +159,7 @@ if (EMSCRIPTEN)
   set(WITH_RENDER_OPENGL1 OFF CACHE BOOL "Build OpenGL 1.1 renderer" FORCE)
   set(USE_GLES ON CACHE BOOL "Use OpenGL ES" FORCE)
   set(NO_INTRO ON CACHE BOOL "Disable intro animation" FORCE)
+  add_compile_options("-pthread")
 endif()
 if (APPLE)
   option(FORCE_APPLE_BIN "Force enable binary installation to /bin" OFF)
@@ -1337,7 +1338,9 @@ if (EMSCRIPTEN)
     "${FURNACE_WEB_SHELL}"
   )
   target_link_options(${FURNACE} PRIVATE
+    "-pthread"
     "-sALLOW_MEMORY_GROWTH=1"
+    "-sPTHREAD_POOL_SIZE=2"
     "-sSTACK_SIZE=5242880"
     "-sFORCE_FILESYSTEM=1"
     "-sMIN_WEBGL_VERSION=1"

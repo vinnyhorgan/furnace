@@ -195,6 +195,7 @@ void DivEngine::runExportThread() {
         logE("could not close audio file!");
       }
 
+#ifndef __EMSCRIPTEN__
       if (initAudioBackend()) {
         for (int i=0; i<song.systemLen; i++) {
           disCont[i].setRates(got.rate);
@@ -204,6 +205,7 @@ void DivEngine::runExportThread() {
           logE("error while activating audio!");
         }
       }
+#endif
       logI("done!");
       exporting=false;
       break;
@@ -307,6 +309,7 @@ void DivEngine::runExportThread() {
         }
       }
 
+#ifndef __EMSCRIPTEN__
       if (initAudioBackend()) {
         for (int i=0; i<song.systemLen; i++) {
           disCont[i].setRates(got.rate);
@@ -316,6 +319,7 @@ void DivEngine::runExportThread() {
           logE("error while activating audio!");
         }
       }
+#endif
       logI("done!");
       exporting=false;
       break;
@@ -449,6 +453,7 @@ void DivEngine::runExportThread() {
         }
       }
 
+#ifndef __EMSCRIPTEN__
       if (initAudioBackend()) {
         for (int i=0; i<song.systemLen; i++) {
           disCont[i].setRates(got.rate);
@@ -458,6 +463,7 @@ void DivEngine::runExportThread() {
           logE("error while activating audio!");
         }
       }
+#endif
       logI("done!");
       exporting=false;
       curExportChan=0;
@@ -531,6 +537,8 @@ bool DivEngine::saveAudio(const char* path, DivAudioExportOptions options) {
 void DivEngine::waitAudioFile() {
   if (exportThread!=NULL) {
     exportThread->join();
+    delete exportThread;
+    exportThread=NULL;
   }
 }
 
@@ -555,5 +563,15 @@ void DivEngine::finishAudioFile() {
       }
     }
   }
+#ifdef __EMSCRIPTEN__
+  if (initAudioBackend()) {
+    for (int i=0; i<song.systemLen; i++) {
+      disCont[i].setRates(got.rate);
+      disCont[i].setQuality(lowQuality,dcHiPass);
+    }
+    if (!output->setRun(true)) {
+      logE("error while activating audio!");
+    }
+  }
+#endif
 }
-

@@ -2761,6 +2761,7 @@ class FurnaceGUI {
   bool romExportSave;
   String romFilterName, romFilterExt;
   String romExportPath;
+  String audioExportPath;
   DivROMExport* pendingExport;
   bool romExportAvail[DIV_ROM_MAX];
   bool romExportExists;

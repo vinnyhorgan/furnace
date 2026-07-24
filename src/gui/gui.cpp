@@ -1761,6 +1761,8 @@ bool dirExists(String s) {
 
 void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
   bool hasOpened=false;
+  FurnaceGUIFileDialogs previousFileDialog=curFileDialog;
+  curFileDialog=type;
 
   String shortName;
   size_t shortNamePos=curFileName.rfind(DIR_SEPARATOR);
@@ -2275,7 +2277,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
       );
       break;
   }
-  if (hasOpened) curFileDialog=type;
+  if (!hasOpened) curFileDialog=previousFileDialog;
   //ImGui::GetIO().ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;
 }
 
@@ -2673,7 +2675,11 @@ void FurnaceGUI::exportAudio(String path, DivAudioExportModes mode) {
   }
   songLoopedSectionLength-=loopRow;
 
-  e->saveAudio(path.c_str(),audioExportOptions);
+  audioExportPath=path;
+  if (!e->saveAudio(path.c_str(),audioExportOptions)) {
+    showError(_("wave export is unavailable in this build."));
+    return;
+  }
 
   totalFiles=0;
   e->getTotalAudioFiles(totalFiles);
@@ -4539,20 +4545,23 @@ bool FurnaceGUI::loop() {
         }
         ImGui::Separator();
         if (settings.exportOptionsLayout==0) {
-          if (ImGui::BeginMenu(_("export audio..."))) {
+          if (ImGui::BeginMenu(_("export wave..."))) {
             drawExportAudio();
             ImGui::EndMenu();
           }
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::BeginMenu(_("export VGM..."))) {
             drawExportVGM();
             ImGui::EndMenu();
           }
+#endif
           if (romExportExists) {
-            if (ImGui::BeginMenu(_("export ROM..."))) {
+            if (ImGui::BeginMenu(_("export commander x16 zsm rom..."))) {
               drawExportROM();
               ImGui::EndMenu();
             }
           }
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::BeginMenu(_("export text..."))) {
             drawExportText();
             ImGui::EndMenu();
@@ -4565,21 +4574,25 @@ bool FurnaceGUI::loop() {
             drawExportDMF();
             ImGui::EndMenu();
           }
+#endif
         } else if (settings.exportOptionsLayout==2) {
-          if (ImGui::MenuItem(_("export audio..."))) {
+          if (ImGui::MenuItem(_("export wave..."))) {
             curExportType=GUI_EXPORT_AUDIO;
             displayExport=true;
           }
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("export VGM..."))) {
             curExportType=GUI_EXPORT_VGM;
             displayExport=true;
           }
+#endif
           if (romExportExists) {
-            if (ImGui::MenuItem(_("export ROM..."))) {
+            if (ImGui::MenuItem(_("export commander x16 zsm rom..."))) {
               curExportType=GUI_EXPORT_ROM;
               displayExport=true;
             }
           }
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("export text..."))) {
             curExportType=GUI_EXPORT_TEXT;
             displayExport=true;
@@ -4592,10 +4605,22 @@ bool FurnaceGUI::loop() {
             curExportType=GUI_EXPORT_DMF;
             displayExport=true;
           }
+#endif
         } else {
+#ifdef FURNACE_KRI_ONLY
+          if (ImGui::MenuItem(_("export wave..."))) {
+            curExportType=GUI_EXPORT_AUDIO;
+            displayExport=true;
+          }
+          if (romExportExists && ImGui::MenuItem(_("export commander x16 zsm rom..."))) {
+            curExportType=GUI_EXPORT_ROM;
+            displayExport=true;
+          }
+#else
           if (ImGui::MenuItem(_("export..."),BIND_FOR(GUI_ACTION_EXPORT))) {
             displayExport=true;
           }
+#endif
         }
         ImGui::Separator();
         if (!settings.classicChipOptions) {
@@ -5262,6 +5287,12 @@ bool FurnaceGUI::loop() {
         } else {
           fileName=fileDialog->getFileName()[0];
         }
+#ifdef __EMSCRIPTEN__
+        // Exporters may proxy work back to the browser thread. Close the
+        // synchronous web save dialog before any of that work can re-enter
+        // this frame and process the same filename as another operation.
+        fileDialog->close();
+#endif
         if (fileName!="") {
           if (curFileDialog==GUI_FILE_SAVE) {
             checkExtension(".fur");
@@ -6054,8 +6085,22 @@ bool FurnaceGUI::loop() {
         if (e->haltAudioFile()) {
           ImGui::CloseCurrentPopup();
         }
-      }
-      if (!e->isExporting()) {
+      } else if (!e->isExporting()) {
+        e->waitAudioFile();
+#ifdef __EMSCRIPTEN__
+        EM_ASM({
+          const path=UTF8ToString($0);
+          const data=FS.readFile(path);
+          const blob=new Blob([data],{type:'audio/wav'});
+          const link=document.createElement('a');
+          link.href=URL.createObjectURL(blob);
+          link.download=path.substring(path.lastIndexOf('/')+1);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(link.href),1000);
+        },audioExportPath.c_str());
+#endif
         e->finishAudioFile();
         ImGui::CloseCurrentPopup();
       }

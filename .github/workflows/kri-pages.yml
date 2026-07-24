@@ -55,6 +55,7 @@ jobs:
           install --mode=0644 build/web-kri/furnace.html _site/index.html
           install --mode=0644 build/web-kri/furnace.js _site/furnace.js
           install --mode=0644 build/web-kri/furnace.wasm _site/furnace.wasm
+          install --mode=0644 res/web/coi-serviceworker.js _site/coi-serviceworker.js
           touch _site/.nojekyll
 
       - name: configure github pages
