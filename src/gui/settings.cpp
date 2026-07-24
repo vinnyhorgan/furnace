@@ -6548,6 +6548,102 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     sty.FramePadding=ImVec2(8.0f,6.0f);
   }
 
+#ifdef FURNACE_KRI_ONLY
+  // A quieter, flatter visual language for kri. Keep Furnace's semantic
+  // tracker colors, but replace the stock-looking ImGui chrome.
+  const ImVec4 kriText(0.90f,0.93f,0.95f,1.00f);
+  const ImVec4 kriTextMuted(0.46f,0.51f,0.57f,1.00f);
+  const ImVec4 kriBase(0.040f,0.047f,0.060f,1.00f);
+  const ImVec4 kriSurface(0.065f,0.075f,0.095f,1.00f);
+  const ImVec4 kriSurfaceHover(0.095f,0.110f,0.135f,1.00f);
+  const ImVec4 kriSurfaceActive(0.125f,0.150f,0.170f,1.00f);
+  const ImVec4 kriRaised(0.080f,0.092f,0.115f,1.00f);
+  const ImVec4 kriBorder(0.165f,0.190f,0.225f,0.90f);
+  const ImVec4 kriAccent(0.67f,0.84f,0.36f,1.00f);
+  const ImVec4 kriAccentSoft(0.28f,0.36f,0.16f,1.00f);
+  const ImVec4 kriAccentHover(0.37f,0.47f,0.21f,1.00f);
+
+  sty.Colors[ImGuiCol_Text]=kriText;
+  sty.Colors[ImGuiCol_TextDisabled]=kriTextMuted;
+  sty.Colors[ImGuiCol_WindowBg]=kriBase;
+  sty.Colors[ImGuiCol_ChildBg]=ImVec4(0.0f,0.0f,0.0f,0.0f);
+  sty.Colors[ImGuiCol_PopupBg]=ImVec4(0.055f,0.063f,0.080f,0.98f);
+  sty.Colors[ImGuiCol_Border]=kriBorder;
+  sty.Colors[ImGuiCol_BorderShadow]=ImVec4(0.0f,0.0f,0.0f,0.0f);
+  sty.Colors[ImGuiCol_FrameBg]=kriSurface;
+  sty.Colors[ImGuiCol_FrameBgHovered]=kriSurfaceHover;
+  sty.Colors[ImGuiCol_FrameBgActive]=kriSurfaceActive;
+  sty.Colors[ImGuiCol_TitleBg]=kriBase;
+  sty.Colors[ImGuiCol_TitleBgActive]=kriRaised;
+  sty.Colors[ImGuiCol_TitleBgCollapsed]=kriBase;
+  sty.Colors[ImGuiCol_MenuBarBg]=ImVec4(0.050f,0.057f,0.070f,1.00f);
+  sty.Colors[ImGuiCol_ScrollbarBg]=ImVec4(0.025f,0.030f,0.040f,0.65f);
+  sty.Colors[ImGuiCol_ScrollbarGrab]=ImVec4(0.20f,0.23f,0.27f,1.00f);
+  sty.Colors[ImGuiCol_ScrollbarGrabHovered]=ImVec4(0.28f,0.32f,0.37f,1.00f);
+  sty.Colors[ImGuiCol_ScrollbarGrabActive]=ImVec4(0.36f,0.41f,0.46f,1.00f);
+  sty.Colors[ImGuiCol_CheckMark]=kriAccent;
+  sty.Colors[ImGuiCol_SliderGrab]=kriAccent;
+  sty.Colors[ImGuiCol_SliderGrabActive]=ImVec4(0.76f,0.92f,0.45f,1.00f);
+  sty.Colors[ImGuiCol_Button]=kriSurface;
+  sty.Colors[ImGuiCol_ButtonHovered]=kriSurfaceHover;
+  sty.Colors[ImGuiCol_ButtonActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_Header]=kriSurface;
+  sty.Colors[ImGuiCol_HeaderHovered]=kriSurfaceHover;
+  sty.Colors[ImGuiCol_HeaderActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_Separator]=kriBorder;
+  sty.Colors[ImGuiCol_SeparatorHovered]=kriAccentHover;
+  sty.Colors[ImGuiCol_SeparatorActive]=kriAccent;
+  sty.Colors[ImGuiCol_ResizeGrip]=ImVec4(0.0f,0.0f,0.0f,0.0f);
+  sty.Colors[ImGuiCol_ResizeGripHovered]=kriAccentHover;
+  sty.Colors[ImGuiCol_ResizeGripActive]=kriAccent;
+  sty.Colors[ImGuiCol_Tab]=kriSurface;
+  sty.Colors[ImGuiCol_TabHovered]=kriSurfaceHover;
+  sty.Colors[ImGuiCol_TabActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_TabUnfocused]=kriBase;
+  sty.Colors[ImGuiCol_TabUnfocusedActive]=kriRaised;
+  sty.Colors[ImGuiCol_DockingPreview]=ImVec4(kriAccent.x,kriAccent.y,kriAccent.z,0.55f);
+  sty.Colors[ImGuiCol_DockingEmptyBg]=kriBase;
+  sty.Colors[ImGuiCol_TableHeaderBg]=kriRaised;
+  sty.Colors[ImGuiCol_TableBorderStrong]=kriBorder;
+  sty.Colors[ImGuiCol_TableBorderLight]=ImVec4(kriBorder.x,kriBorder.y,kriBorder.z,0.45f);
+  sty.Colors[ImGuiCol_TableRowBg]=ImVec4(0.0f,0.0f,0.0f,0.0f);
+  sty.Colors[ImGuiCol_TableRowBgAlt]=ImVec4(1.0f,1.0f,1.0f,0.025f);
+  sty.Colors[ImGuiCol_TextSelectedBg]=ImVec4(kriAccent.x,kriAccent.y,kriAccent.z,0.28f);
+  sty.Colors[ImGuiCol_NavHighlight]=kriAccent;
+  sty.Colors[ImGuiCol_ModalWindowDimBg]=ImVec4(0.0f,0.0f,0.0f,0.68f);
+
+  sty.WindowPadding=ImVec2(8.0f,7.0f);
+  sty.FramePadding=mobileUI?ImVec2(8.0f,6.0f):ImVec2(6.0f,3.5f);
+  sty.ItemSpacing=ImVec2(6.0f,5.0f);
+  sty.ItemInnerSpacing=ImVec2(5.0f,4.0f);
+  sty.CellPadding=ImVec2(6.0f,3.0f);
+  sty.WindowRounding=5.0f;
+  sty.ChildRounding=4.0f;
+  sty.PopupRounding=5.0f;
+  sty.FrameRounding=4.0f;
+  sty.ScrollbarRounding=5.0f;
+  sty.GrabRounding=4.0f;
+  sty.TabRounding=4.0f;
+  sty.WindowBorderSize=1.0f;
+  sty.ChildBorderSize=1.0f;
+  sty.PopupBorderSize=1.0f;
+  sty.FrameBorderSize=0.0f;
+  sty.TabBorderSize=0.0f;
+  sty.ScrollbarSize=11.0f;
+  sty.GrabMinSize=8.0f;
+  sty.DockingSeparatorSize=2.0f;
+
+  if (safeMode || renderBackend==GUI_BACKEND_SOFTWARE) {
+    sty.WindowRounding=0.0f;
+    sty.ChildRounding=0.0f;
+    sty.PopupRounding=0.0f;
+    sty.FrameRounding=0.0f;
+    sty.ScrollbarRounding=0.0f;
+    sty.GrabRounding=0.0f;
+    sty.TabRounding=0.0f;
+  }
+#endif
+
   sty.ScaleAllSizes(dpiScale);
 
   ImGui::GetStyle()=sty;
