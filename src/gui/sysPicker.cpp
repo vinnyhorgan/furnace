@@ -26,6 +26,37 @@
 DivSystem FurnaceGUI::systemPicker(bool fullWidth) {
   DivSystem ret=DIV_SYSTEM_NULL;
   DivSystem hoveredSys=DIV_SYSTEM_NULL;
+#ifdef FURNACE_KRI_ONLY
+  const DivSystem kriSystems[2]={DIV_SYSTEM_YM2151,DIV_SYSTEM_KRI_VERA};
+  if (ImGui::BeginTable(
+        "SysList",
+        1,
+        ImGuiTableFlags_ScrollY|ImGuiTableFlags_BordersOuterH,
+        ImVec2(fullWidth?ImGui::GetContentRegionAvail().x:500.0f*dpiScale,90.0f*dpiScale)
+      )) {
+    for (DivSystem system: kriSystems) {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      if (ImGui::Selectable(e->getSystemName(system),false,0,ImVec2(500.0f*dpiScale,0.0f))) {
+        ret=system;
+      }
+      if (ImGui::IsItemHovered()) hoveredSys=system;
+    }
+    ImGui::EndTable();
+  }
+  if (ImGui::BeginChild("SysDesc",ImVec2(0.0f,100.0f*dpiScale),false,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse)) {
+    if (hoveredSys!=DIV_SYSTEM_NULL) {
+      const DivSysDef* sysDef=e->getSystemDef(hoveredSys);
+      ImGui::TextWrapped("%s",sysDef->description);
+      ImGui::Separator();
+      drawSystemChannelInfoText(sysDef);
+      drawSystemChannelInfo(sysDef);
+    }
+  }
+  ImGui::EndChild();
+  return ret;
+#endif
+
   bool reissueSearch=false;
   if (curSysSection==NULL) {
     curSysSection=availableSystems;

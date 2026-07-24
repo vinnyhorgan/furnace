@@ -84,15 +84,24 @@ void DivEngine::registerROMExports() {
 #endif
 
   romExportDefs[DIV_ROM_ZSM]=new DivROMExportDef(
+#ifdef FURNACE_KRI_ONLY
+    "kri ZSM", "ZeroByteOrg and MooingLemur",
+    "kri ZSM music data.\n"
+#else
     "Commander X16 ZSM", "ZeroByteOrg and MooingLemur",
     "Commander X16 Zsound Music File.\n"
+#endif
     "for use with Melodius, Calliope and/or ZSMKit:\n"
     "- https://github.com/mooinglemur/zsmkit (development)\n"
     "- https://github.com/mooinglemur/melodius (player)\n"
     "- https://github.com/ZeroByteOrg/calliope (player)\n",
     "ZSM file", ".zsm",
     {
+#ifdef FURNACE_KRI_ONLY
+      DIV_SYSTEM_YM2151, DIV_SYSTEM_KRI_VERA
+#else
       DIV_SYSTEM_YM2151, DIV_SYSTEM_VERA
+#endif
     },
     false, DIV_REQPOL_LAX
   );

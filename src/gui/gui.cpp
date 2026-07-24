@@ -4556,7 +4556,7 @@ bool FurnaceGUI::loop() {
           }
 #endif
           if (romExportExists) {
-            if (ImGui::BeginMenu(_("export commander x16 zsm rom..."))) {
+            if (ImGui::BeginMenu(_("export kri zsm rom..."))) {
               drawExportROM();
               ImGui::EndMenu();
             }
@@ -4587,7 +4587,7 @@ bool FurnaceGUI::loop() {
           }
 #endif
           if (romExportExists) {
-            if (ImGui::MenuItem(_("export commander x16 zsm rom..."))) {
+            if (ImGui::MenuItem(_("export kri zsm rom..."))) {
               curExportType=GUI_EXPORT_ROM;
               displayExport=true;
             }
@@ -4612,7 +4612,7 @@ bool FurnaceGUI::loop() {
             curExportType=GUI_EXPORT_AUDIO;
             displayExport=true;
           }
-          if (romExportExists && ImGui::MenuItem(_("export commander x16 zsm rom..."))) {
+          if (romExportExists && ImGui::MenuItem(_("export kri zsm rom..."))) {
             curExportType=GUI_EXPORT_ROM;
             displayExport=true;
           }
@@ -4733,7 +4733,7 @@ bool FurnaceGUI::loop() {
           if (ImGui::MenuItem("WICKED EXPRESS")) playKriDemo("/kri-demos/demos/x68000/Wicked_Express.fur");
           ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("vera")) {
+        if (ImGui::BeginMenu("vera → kri psg")) {
           if (ImGui::MenuItem("Göte Går På Tivoli")) playKriDemo("/kri-demos/demos/x16/Cafe - 010 Editor 2.0kg.fur");
           if (ImGui::MenuItem("Exerion II - Track 2")) playKriDemo("/kri-demos/demos/x16/Exerion_II_Tune.fur");
           if (ImGui::MenuItem("Identity Believer")) playKriDemo("/kri-demos/demos/x16/Identity_Believer.fur");
@@ -4743,7 +4743,7 @@ bool FurnaceGUI::loop() {
           if (ImGui::MenuItem("Watching Paint Dry")) playKriDemo("/kri-demos/demos/x16/watching_paint_dry.fur");
           ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("opm + vera")) {
+        if (ImGui::BeginMenu("opm + vera → kri")) {
           if (ImGui::MenuItem("Shades of Blue")) playKriDemo("/kri-demos/demos/x16/Shades of Blue.fur");
           if (ImGui::MenuItem("Rising Blue Lightning")) playKriDemo("/kri-demos/demos/x16/TFV_Rise.fur");
           if (ImGui::MenuItem("Dance with me")) playKriDemo("/kri-demos/demos/x16/dance with me.fur");
@@ -4818,13 +4818,17 @@ bool FurnaceGUI::loop() {
             if (ImGui::MenuItem(_("assets"), BIND_FOR(GUI_ACTION_WINDOW_INS_LIST), insListOpen)) insListOpen = !insListOpen;
           } else {
             if (ImGui::MenuItem(_("instruments"), BIND_FOR(GUI_ACTION_WINDOW_INS_LIST), insListOpen)) insListOpen = !insListOpen;
+#ifndef FURNACE_KRI_ONLY
             if (ImGui::MenuItem(_("samples"), BIND_FOR(GUI_ACTION_WINDOW_SAMPLE_LIST), sampleListOpen)) sampleListOpen = !sampleListOpen;
             if (ImGui::MenuItem(_("wavetables"), BIND_FOR(GUI_ACTION_WINDOW_WAVE_LIST), waveListOpen)) waveListOpen = !waveListOpen;
+#endif
           }
           ImGui::Separator();
           if (ImGui::MenuItem(_("instrument editor"), BIND_FOR(GUI_ACTION_WINDOW_INS_EDIT), insEditOpen)) insEditOpen = !insEditOpen;
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("sample editor"), BIND_FOR(GUI_ACTION_WINDOW_SAMPLE_EDIT), sampleEditOpen)) sampleEditOpen = !sampleEditOpen;
           if (ImGui::MenuItem(_("wavetable editor"), BIND_FOR(GUI_ACTION_WINDOW_WAVE_EDIT), waveEditOpen)) waveEditOpen = !waveEditOpen;
+#endif
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu(_("visualizers"))) {
@@ -8159,6 +8163,12 @@ void FurnaceGUI::syncState() {
   waveEditOpen=e->getConfBool("waveEditOpen",false);
   sampleListOpen=e->getConfBool("sampleListOpen",true);
   sampleEditOpen=e->getConfBool("sampleEditOpen",false);
+#ifdef FURNACE_KRI_ONLY
+  waveListOpen=false;
+  waveEditOpen=false;
+  sampleListOpen=false;
+  sampleEditOpen=false;
+#endif
   settingsOpen=e->getConfBool("settingsOpen",false);
   mixerOpen=e->getConfBool("mixerOpen",false);
   oscOpen=e->getConfBool("oscOpen",true);

@@ -213,9 +213,18 @@ String DivEngine::getSongSystemLegacyName(DivSong& ds, bool isMultiSystemAccepta
         return "Bally Midway MCR";
       }
 
+#ifdef FURNACE_KRI_ONLY
+      if (ds.system[0]==DIV_SYSTEM_YM2151 && ds.system[1]==DIV_SYSTEM_KRI_VERA) {
+        return "kri";
+      }
+      if (ds.system[0]==DIV_SYSTEM_KRI_VERA && ds.system[1]==DIV_SYSTEM_YM2151) {
+        return "kri";
+      }
+#else
       if (ds.system[0]==DIV_SYSTEM_YM2151 && ds.system[1]==DIV_SYSTEM_VERA) {
         return "Commander X16";
       }
+#endif
       break;
     case 3:
       if (ds.system[0]==DIV_SYSTEM_AY8910 && ds.system[1]==DIV_SYSTEM_AY8910 && ds.system[2]==DIV_SYSTEM_BUBSYS_WSG) {
@@ -1667,6 +1676,22 @@ void DivEngine::registerSystems() {
     }
   );
 
+#ifdef FURNACE_KRI_ONLY
+  sysDefs[DIV_SYSTEM_KRI_VERA]=new DivSysDef(
+    _("kri psg"), NULL, 0xf6, 0, 8, false, true, 0, false, 0, 0, 0,
+    _("kri's eight-channel, vera-compatible psg. pcm is not present."),
+    {_("Channel 1"), _("Channel 2"), _("Channel 3"), _("Channel 4"), _("Channel 5"), _("Channel 6"), _("Channel 7"), _("Channel 8")},
+    {"1", "2", "3", "4", "5", "6", "7", "8"},
+    {DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE, DIV_CH_PULSE},
+    {DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA, DIV_INS_VERA},
+    {},
+    {
+      {0x20, {DIV_CMD_WAVE, _("20xx: Set waveform")}},
+      {0x22, {DIV_CMD_STD_NOISE_MODE, _("22xx: Set duty cycle (0 to 3F)")}},
+    }
+  );
+#endif
+
   sysDefs[DIV_SYSTEM_YM2610B_EXT]=new DivSysDef(
     _("Yamaha YM2610B (OPNB2) Extended Channel 3"), NULL, 0xde, 0, 19, true, false, 0x151, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
     _("so Taito asked Yamaha if they could get the two missing FM channels back, and Yamaha gladly provided them with this chip.\nthis one is in Extended Channel mode, which turns the third FM channel into four operators with independent notes/frequencies."),
@@ -2343,11 +2368,10 @@ void DivEngine::registerSystems() {
   );
 
 #ifdef FURNACE_KRI_ONLY
-  // Keep the serialized system IDs stable, but expose only the two chips
-  // present in kri. unsupported .fur files then fail cleanly
-  // during system-ID lookup instead of instantiating an unavailable backend.
+  // Standard VERA remains registered only so old Commander X16 songs can be
+  // parsed and converted to kri's eight-channel PSG during loading.
   for (int i=0; i<DIV_MAX_CHIP_DEFS; i++) {
-    if (i==DIV_SYSTEM_YM2151 || i==DIV_SYSTEM_VERA) continue;
+    if (i==DIV_SYSTEM_YM2151 || i==DIV_SYSTEM_VERA || i==DIV_SYSTEM_KRI_VERA) continue;
     delete sysDefs[i];
     sysDefs[i]=NULL;
   }

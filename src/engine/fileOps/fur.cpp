@@ -63,6 +63,108 @@ struct PatToWrite {
     pat(p) {}
 };
 
+#ifdef FURNACE_KRI_ONLY
+static void moveKriSongChannel(DivSubSong* subSong, int source, int destination) {
+  if (source==destination) return;
+
+  subSong->pat[destination].wipePatterns();
+  subSong->pat[destination].effectCols=subSong->pat[source].effectCols;
+  for (int i=0; i<DIV_MAX_PATTERNS; i++) {
+    subSong->pat[destination].data[i]=subSong->pat[source].data[i];
+    subSong->pat[source].data[i]=NULL;
+  }
+
+  memcpy(
+    subSong->orders.ord[destination],
+    subSong->orders.ord[source],
+    DIV_MAX_PATTERNS*sizeof(unsigned char)
+  );
+  memset(subSong->orders.ord[source],0,DIV_MAX_PATTERNS*sizeof(unsigned char));
+
+  subSong->chanShow[destination]=subSong->chanShow[source];
+  subSong->chanShowChanOsc[destination]=subSong->chanShowChanOsc[source];
+  subSong->chanCollapse[destination]=subSong->chanCollapse[source];
+  subSong->chanName[destination]=std::move(subSong->chanName[source]);
+  subSong->chanShortName[destination]=std::move(subSong->chanShortName[source]);
+}
+
+static bool kriPatternHasData(const DivPattern* pattern, int rows, int effectCols) {
+  if (pattern==NULL) return false;
+  int columns=MIN(4+(effectCols*2),DIV_MAX_COLS);
+  for (int row=0; row<rows; row++) {
+    if (pattern->data[row][0]!=0 || pattern->data[row][1]!=0) return true;
+    for (int column=2; column<columns; column++) {
+      if (pattern->data[row][column]!=-1) return true;
+    }
+  }
+  return false;
+}
+
+static void convertLegacyVERAToKri(DivEngine* engine, DivSong& song) {
+  int oldChannelCount=0;
+  int newChannelCount=0;
+  int droppedChannelsWithData=0;
+  std::vector<int> keptChannels;
+
+  for (int i=0; i<song.systemLen; i++) {
+    int channelCount=engine->getChannelCount(song.system[i]);
+    int keptChannelCount=channelCount;
+    if (song.system[i]==DIV_SYSTEM_VERA) {
+      keptChannelCount=8;
+      song.system[i]=DIV_SYSTEM_KRI_VERA;
+      for (DivSubSong* subSong: song.subsong) {
+        for (int channel=oldChannelCount+8; channel<oldChannelCount+channelCount; channel++) {
+          for (int pattern=0; pattern<DIV_MAX_PATTERNS; pattern++) {
+            if (kriPatternHasData(
+                  subSong->pat[channel].data[pattern],
+                  subSong->patLen,
+                  subSong->pat[channel].effectCols
+                )) {
+              droppedChannelsWithData++;
+              break;
+            }
+          }
+        }
+      }
+    }
+    for (int channel=0; channel<keptChannelCount; channel++) {
+      keptChannels.push_back(oldChannelCount+channel);
+    }
+    oldChannelCount+=channelCount;
+    newChannelCount+=keptChannelCount;
+  }
+
+  if (oldChannelCount==newChannelCount) return;
+
+  for (DivSubSong* subSong: song.subsong) {
+    for (int destination=0; destination<newChannelCount; destination++) {
+      moveKriSongChannel(subSong,keptChannels[destination],destination);
+    }
+    for (int channel=newChannelCount; channel<oldChannelCount; channel++) {
+      subSong->pat[channel].wipePatterns();
+      subSong->pat[channel].effectCols=1;
+      memset(subSong->orders.ord[channel],0,DIV_MAX_PATTERNS*sizeof(unsigned char));
+      subSong->chanShow[channel]=true;
+      subSong->chanShowChanOsc[channel]=true;
+      subSong->chanCollapse[channel]=0;
+      subSong->chanName[channel].clear();
+      subSong->chanShortName[channel].clear();
+    }
+  }
+
+  song.systemName=engine->getSongSystemLegacyName(song,true);
+  song.systemNameJ.clear();
+  logI("converted legacy VERA song to kri PSG (%d -> %d channels)",oldChannelCount,newChannelCount);
+  if (droppedChannelsWithData>0) {
+    logW(
+      "legacy VERA conversion discarded data from %d channel%s outside kri's eight PSG voices",
+      droppedChannelsWithData,
+      droppedChannelsWithData==1?"":"s"
+    );
+  }
+}
+#endif
+
 void DivEngine::putAssetDirData(SafeWriter* w, std::vector<DivAssetDir>& dir) {
   size_t blockStartSeek, blockEndSeek;
 
@@ -2142,6 +2244,10 @@ bool DivEngine::loadFur(unsigned char* file, size_t len, int variantID) {
       }
     }
 
+#ifdef FURNACE_KRI_ONLY
+    convertLegacyVERAToKri(this,ds);
+#endif
+
     if (active) quitDispatch();
     BUSY_BEGIN_SOFT;
     saveLock.lock();
@@ -2795,4 +2901,3 @@ SafeWriter* DivEngine::saveFur(bool notPrimary, bool newPatternFormat) {
   saveLock.unlock();
   return w;
 }
-

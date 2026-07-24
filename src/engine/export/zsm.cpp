@@ -538,13 +538,21 @@ void DivExportZSM::run() {
   // find indexes for YM and VERA. Ignore other systems.
   for (int i=0; i<e->song.systemLen; i++) {
     switch (e->song.system[i]) {
+#ifdef FURNACE_KRI_ONLY
+      case DIV_SYSTEM_KRI_VERA:
+#else
       case DIV_SYSTEM_VERA:
+#endif
         if (VERA>=0) {
           IGNORED++;
           break;
         }
         VERA=i;
+#ifdef FURNACE_KRI_ONLY
+        logAppendf("kri PSG detected as chip id %d",i);
+#else
         logAppendf("VERA detected as chip id %d",i);
+#endif
         break;
       case DIV_SYSTEM_YM2151:
         if (YM>=0) {

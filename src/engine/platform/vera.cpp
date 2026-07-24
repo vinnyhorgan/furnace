@@ -52,12 +52,40 @@ const char* regCheatSheetVERA[]={
   NULL
 };
 
+const char* regCheatSheetKriVERA[]={
+  "CHxFreq", "00+x*4",
+  "CHxVol",  "02+x*4",
+  "CHxWave", "03+x*4",
+
+  NULL
+};
+
 const char** DivPlatformVERA::getRegisterSheet() {
-  return regCheatSheetVERA;
+  return pcmEnabled?regCheatSheetVERA:regCheatSheetKriVERA;
 }
 
 // TODO: possible sample offset latency...
 void DivPlatformVERA::acquire(short** buf, size_t len) {
+  if (!pcmEnabled) {
+    for (int i=0; i<totalChannels; i++) {
+      oscBuf[i]->begin(len);
+    }
+    for (size_t i=0; i<len; i++) {
+      short left=0;
+      short right=0;
+      psg_render(psg,&left,&right,1);
+      buf[0][i]=left;
+      buf[1][i]=right;
+      for (int j=0; j<psgChannels; j++) {
+        oscBuf[j]->putSample(i,psg->channels[j].lastOut);
+      }
+    }
+    for (int i=0; i<totalChannels; i++) {
+      oscBuf[i]->end(len);
+    }
+    return;
+  }
+
   for (int i=0; i<17; i++) {
     oscBuf[i]->begin(len);
   }
@@ -142,25 +170,27 @@ void DivPlatformVERA::acquire(short** buf, size_t len) {
 }
 
 void DivPlatformVERA::reset() {
-  for (int i=0; i<17; i++) {
+  for (int i=0; i<totalChannels; i++) {
     chan[i]=Channel();
     chan[i].std.setEngine(parent);
   }
   psg_reset(psg);
-  pcm_reset(pcm);
-  memset(regPool,0,67);
-  for (int i=0; i<16; i++) {
+  if (pcmEnabled) pcm_reset(pcm);
+  memset(regPool,0,sizeof(regPool));
+  for (int i=0; i<psgChannels; i++) {
     chan[i].vol=63;
     chan[i].pan=3;
     rWriteHi(i,2,isMuted[i]?0:3);
   }
-  chan[16].vol=15;
-  chan[16].pan=3;
+  if (pcmEnabled) {
+    chan[16].vol=15;
+    chan[16].pan=3;
+  }
   lastCenterRate=-1;
 }
 
 int DivPlatformVERA::calcNoteFreq(int ch, int note) {
-  if (ch<16) {
+  if (ch<psgChannels) {
     return parent->calcBaseFreq(chipClock,2097152,note,false);
   } else {
     double off=65536.0;
@@ -177,7 +207,7 @@ int DivPlatformVERA::calcNoteFreq(int ch, int note) {
 }
 
 void DivPlatformVERA::tick(bool sysTick) {
-  for (int i=0; i<16; i++) {
+  for (int i=0; i<psgChannels; i++) {
     chan[i].std.next();
     if (chan[i].std.vol.had) {
       chan[i].outVol=MAX(chan[i].vol+chan[i].std.vol.val-63,0);
@@ -197,12 +227,10 @@ void DivPlatformVERA::tick(bool sysTick) {
     if (chan[i].std.wave.had) {
       rWriteHi(i,3,chan[i].std.wave.val);
     }
-    if (i<16) {
-      if (chan[i].std.panL.had) {
-        chan[i].pan=chan[i].std.panL.val&3;
-        chan[i].pan=((chan[i].pan&1)<<1)|((chan[i].pan&2)>>1);
-        rWriteHi(i,2,isMuted[i]?0:chan[i].pan);
-      }
+    if (chan[i].std.panL.had) {
+      chan[i].pan=chan[i].std.panL.val&3;
+      chan[i].pan=((chan[i].pan&1)<<1)|((chan[i].pan&2)>>1);
+      rWriteHi(i,2,isMuted[i]?0:chan[i].pan);
     }
     if (chan[i].std.pitch.had) {
       if (chan[i].std.pitch.mode) {
@@ -221,6 +249,8 @@ void DivPlatformVERA::tick(bool sysTick) {
       chan[i].freqChanged=false;
     }
   }
+  if (!pcmEnabled) return;
+
   // PCM
   chan[16].std.next();
   if (chan[16].std.vol.had) {
@@ -305,10 +335,11 @@ void DivPlatformVERA::tick(bool sysTick) {
 }
 
 int DivPlatformVERA::dispatch(DivCommand c) {
+  if (c.chan>=totalChannels) return 1;
   int tmp;
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON:
-      if (c.chan<16) {
+      if (c.chan<psgChannels) {
         rWriteLo(c.chan,2,chan[c.chan].vol);
       } else {
         DivInstrument* ins=parent->getIns(chan[16].ins,DIV_INS_VERA);
@@ -353,7 +384,7 @@ int DivPlatformVERA::dispatch(DivCommand c) {
       break;
     case DIV_CMD_NOTE_OFF:
       chan[c.chan].active=false;
-      if(c.chan<16) {
+      if(c.chan<psgChannels) {
         rWriteLo(c.chan,2,0)
       } else {
         chan[16].pcm.sample=-1;
@@ -370,7 +401,7 @@ int DivPlatformVERA::dispatch(DivCommand c) {
       chan[c.chan].ins=(unsigned char)c.value;
       break;
     case DIV_CMD_VOLUME:
-      if (c.chan<16) {
+      if (c.chan<psgChannels) {
         tmp=c.value&0x3f;
         chan[c.chan].vol=tmp;
         if (chan[c.chan].active) {
@@ -427,17 +458,17 @@ int DivPlatformVERA::dispatch(DivCommand c) {
       chan[c.chan].inPorta=c.value;
       break;
     case DIV_CMD_STD_NOISE_MODE:
-      if (c.chan<16) rWriteLo(c.chan,3,c.value);
+      if (c.chan<psgChannels) rWriteLo(c.chan,3,c.value);
       break;
     case DIV_CMD_WAVE:
-      if (c.chan<16) rWriteHi(c.chan,3,c.value);
+      if (c.chan<psgChannels) rWriteHi(c.chan,3,c.value);
       break;
     case DIV_CMD_PANNING: {
       tmp=0;
       tmp|=(c.value>0)?1:0;
       tmp|=(c.value2>0)?2:0;
       chan[c.chan].pan=tmp&3;
-      if (c.chan<16) {
+      if (c.chan<psgChannels) {
         rWriteHi(c.chan,2,isMuted[c.chan]?0:chan[c.chan].pan);
       }
       break;
@@ -448,7 +479,7 @@ int DivPlatformVERA::dispatch(DivCommand c) {
       chan[c.chan].pcm.setPos=true;
       break;
     case DIV_CMD_GET_VOLMAX:
-      if (c.chan<16) {
+      if (c.chan<psgChannels) {
         return 63;
       } else {
         return 15;
@@ -493,7 +524,7 @@ unsigned char* DivPlatformVERA::getRegisterPool() {
 }
 
 int DivPlatformVERA::getRegisterPoolSize() {
-  return 67;
+  return pcmEnabled?67:psgChannels*4;
 }
 
 bool DivPlatformVERA::getLegacyAlwaysSetVolume() {
@@ -501,8 +532,9 @@ bool DivPlatformVERA::getLegacyAlwaysSetVolume() {
 }
 
 void DivPlatformVERA::muteChannel(int ch, bool mute) {
+  if (ch<0 || ch>=totalChannels) return;
   isMuted[ch]=mute;
-  if (ch<16) {
+  if (ch<psgChannels) {
     rWriteHi(ch,2,mute?0:chan[ch].pan);
   }
 }
@@ -516,12 +548,13 @@ int DivPlatformVERA::getOutputCount() {
 }
 
 void DivPlatformVERA::notifyInsDeletion(void* ins) {
-  for (int i=0; i<17; i++) {
+  for (int i=0; i<totalChannels; i++) {
     chan[i].std.notifyInsDeletion((DivInstrument*)ins);
   }
 }
 
 void DivPlatformVERA::poke(unsigned int addr, unsigned short val) {
+  if (!pcmEnabled && addr>=(unsigned int)(psgChannels*4) && addr!=68) return;
   switch (addr) {
     case 64:
       rWritePCMCtrl((unsigned char)val);
@@ -547,32 +580,35 @@ void DivPlatformVERA::setFlags(const DivConfig& flags) {
   chipClock=25000000;
   CHECK_CUSTOM_CLOCK;
   rate=chipClock/512;
-  for (int i=0; i<17; i++) {
+  for (int i=0; i<totalChannels; i++) {
     oscBuf[i]->setRate(rate);
   }
 }
 
 int DivPlatformVERA::init(DivEngine* p, int channels, int sugRate, const DivConfig& flags) {
-  for (int i=0; i<17; i++) {
+  psgChannels=MIN(channels,16);
+  pcmEnabled=channels>16;
+  totalChannels=psgChannels+(pcmEnabled?1:0);
+  for (int i=0; i<totalChannels; i++) {
     isMuted[i]=false;
     oscBuf[i]=new DivDispatchOscBuffer;
   }
   parent=p;
   psg=new struct VERA_PSG;
-  pcm=new struct VERA_PCM;
+  pcm=pcmEnabled?(new struct VERA_PCM):NULL;
   dumpWrites=false;
   skipRegisterWrites=false;
   setFlags(flags);
   reset();
-  return 17;
+  return totalChannels;
 }
 
 void DivPlatformVERA::quit() {
-  for (int i=0; i<17; i++) {
+  for (int i=0; i<totalChannels; i++) {
     delete oscBuf[i];
   }
   delete psg;
-  delete pcm;
+  if (pcm!=NULL) delete pcm;
 }
 DivPlatformVERA::~DivPlatformVERA() {
 }

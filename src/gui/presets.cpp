@@ -53,10 +53,10 @@ void FurnaceGUI::initSystemPresets() {
   FurnaceGUISysCategory cat;
 
 #ifdef FURNACE_KRI_ONLY
-  CATEGORY_BEGIN(_("kri"),_("yamaha ym2151 and vera audio"));
+  CATEGORY_BEGIN(_("kri"),_("yamaha ym2151 and eight-channel kri psg"));
   ENTRY(
     _("kri"), {
-      CH(DIV_SYSTEM_VERA, 1.0f, 0, ""),
+      CH(DIV_SYSTEM_KRI_VERA, 1.0f, 0, ""),
       CH(DIV_SYSTEM_YM2151, 1.0f, 0, "")
     }
   );

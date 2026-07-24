@@ -146,6 +146,9 @@ enum DivSystem {
   DIV_SYSTEM_UPD1771C,
   DIV_SYSTEM_SID3,
   DIV_SYSTEM_C64_PCM,
+#ifdef FURNACE_KRI_ONLY
+  DIV_SYSTEM_KRI_VERA,
+#endif
 
   DIV_SYSTEM_MAX
 };
@@ -492,7 +495,7 @@ struct DivSong {
     }
     subsong.push_back(new DivSubSong);
 #ifdef FURNACE_KRI_ONLY
-    system[0]=DIV_SYSTEM_VERA;
+    system[0]=DIV_SYSTEM_KRI_VERA;
     system[1]=DIV_SYSTEM_YM2151;
 #else
     system[0]=DIV_SYSTEM_YM2612;

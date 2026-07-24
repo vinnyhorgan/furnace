@@ -278,7 +278,7 @@ void FurnaceGUI::drawExportROM(bool onWindow) {
 #ifdef FURNACE_KRI_ONLY
   romTarget=DIV_ROM_ZSM;
   romMultiFile=false;
-  romFilterName="Commander X16 ZSM ROM";
+  romFilterName="kri ZSM ROM";
   romFilterExt=".zsm";
 #endif
   const DivROMExportDef* def=e->getROMExportDef(romTarget);

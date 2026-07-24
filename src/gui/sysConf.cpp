@@ -2584,6 +2584,9 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
       }
       break;
     }
+#ifdef FURNACE_KRI_ONLY
+    case DIV_SYSTEM_KRI_VERA:
+#endif
     case DIV_SYSTEM_VERA: {
       int chipType=flags.getInt("chipType",3);
 

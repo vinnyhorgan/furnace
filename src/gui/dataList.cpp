@@ -728,6 +728,7 @@ void FurnaceGUI::drawInsList(bool asChild) {
       }
 
       if (settings.unifiedDataView) {
+#ifndef FURNACE_KRI_ONLY
         ImGui::Unindent();
 
         ImGui::TableNextRow();
@@ -751,6 +752,7 @@ void FurnaceGUI::drawInsList(bool asChild) {
         ImGui::Indent();
         actualSampleList();
         ImGui::Unindent();
+#endif
       }
 
       ImGui::EndTable();

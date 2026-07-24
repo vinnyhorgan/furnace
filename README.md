@@ -1,6 +1,6 @@
 # kri
 
-a furnace tracker for the kri fantasy machine, with yamaha ym2151 and vera audio.
+a furnace tracker for the kri fantasy machine, with yamaha ym2151 and an eight-channel vera-compatible psg. no pcm.
 
 [run it in your browser](https://vinnyhorgan.github.io/furnace/)
 

@@ -6612,11 +6612,6 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
   sty.Colors[ImGuiCol_NavHighlight]=kriAccent;
   sty.Colors[ImGuiCol_ModalWindowDimBg]=ImVec4(0.0f,0.0f,0.0f,0.68f);
 
-  sty.WindowPadding=ImVec2(8.0f,7.0f);
-  sty.FramePadding=mobileUI?ImVec2(8.0f,6.0f):ImVec2(6.0f,3.5f);
-  sty.ItemSpacing=ImVec2(6.0f,5.0f);
-  sty.ItemInnerSpacing=ImVec2(5.0f,4.0f);
-  sty.CellPadding=ImVec2(6.0f,3.0f);
   sty.WindowRounding=5.0f;
   sty.ChildRounding=4.0f;
   sty.PopupRounding=5.0f;

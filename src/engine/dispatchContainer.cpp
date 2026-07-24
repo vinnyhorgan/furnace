@@ -249,6 +249,7 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       }
       break;
     case DIV_SYSTEM_VERA:
+    case DIV_SYSTEM_KRI_VERA:
       dispatch=new DivPlatformVERA;
       break;
     default:

@@ -54,6 +54,9 @@ class DivPlatformVERA: public DivDispatch {
     unsigned char regPool[69];
     struct VERA_PSG* psg;
     struct VERA_PCM* pcm;
+    int psgChannels;
+    int totalChannels;
+    bool pcmEnabled;
     int lastCenterRate;
   
     int calcNoteFreq(int ch, int note);
