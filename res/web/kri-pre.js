@@ -19,20 +19,36 @@ Module.preRun.push(() => {
       } else {
         const updatedLayout = layout
           .replace(
+            'ID=0x00000003 Parent=0x00000001 SizeRef=976,231',
+            'ID=0x00000003 Parent=0x00000001 SizeRef=936,231'
+          )
+          .replace(
+            'ID=0x00000004 Parent=0x00000001 SizeRef=302,231',
+            'ID=0x00000004 Parent=0x00000001 SizeRef=342,231'
+          )
+          .replace(
             'ID=0x00000005 Parent=0x00000008 SizeRef=304,406',
-            'ID=0x00000005 Parent=0x00000008 SizeRef=285,406'
+            'ID=0x00000005 Parent=0x00000008 SizeRef=300,406'
           )
           .replace(
             'ID=0x00000006 Parent=0x00000008 SizeRef=323,406',
-            'ID=0x00000006 Parent=0x00000008 SizeRef=342,406'
+            'ID=0x00000006 Parent=0x00000008 SizeRef=327,406'
           )
           .replace(
             'ID=0x00000005 Parent=0x00000008 SizeRef=279,406',
-            'ID=0x00000005 Parent=0x00000008 SizeRef=285,406'
+            'ID=0x00000005 Parent=0x00000008 SizeRef=300,406'
           )
           .replace(
             'ID=0x00000006 Parent=0x00000008 SizeRef=348,406',
-            'ID=0x00000006 Parent=0x00000008 SizeRef=342,406'
+            'ID=0x00000006 Parent=0x00000008 SizeRef=327,406'
+          )
+          .replace(
+            'ID=0x00000005 Parent=0x00000008 SizeRef=285,406',
+            'ID=0x00000005 Parent=0x00000008 SizeRef=300,406'
+          )
+          .replace(
+            'ID=0x00000006 Parent=0x00000008 SizeRef=342,406',
+            'ID=0x00000006 Parent=0x00000008 SizeRef=327,406'
           )
           .replace(
             'ID=0x0000000D Parent=0x00000009 SizeRef=292,68',
