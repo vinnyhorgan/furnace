@@ -38,16 +38,13 @@ jobs:
       - name: show compiler version
         run: emcc --version
 
-      - name: cache compiler and build outputs
+      - name: cache emscripten compiler
         uses: actions/cache@v4
         with:
-          path: |
-            .emscripten-cache
-            build/web-kri
-          key: kri-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-kri.sh') }}-${{ github.sha }}
+          path: .emscripten-cache
+          key: kri-emcache-v2-${{ env.EM_VERSION }}-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
-            kri-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-kri.sh') }}-
-            kri-${{ env.EM_VERSION }}-${{ runner.os }}-
+            kri-emcache-v2-${{ env.EM_VERSION }}-${{ runner.os }}-
 
       - name: build web edition
         run: ./scripts/build-web-kri.sh
