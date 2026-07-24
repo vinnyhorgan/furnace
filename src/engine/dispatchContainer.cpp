@@ -19,6 +19,11 @@
 
 #include "blip_buf.h"
 #include "engine.h"
+#ifdef FURNACE_X16_ONLY
+#include "platform/arcade.h"
+#include "platform/vera.h"
+#include "platform/dummy.h"
+#else
 #include "platform/genesis.h"
 #include "platform/genesisext.h"
 #include "platform/msm5232.h"
@@ -94,6 +99,7 @@
 #include "platform/sid2.h"
 #include "platform/sid3.h"
 #include "platform/dummy.h"
+#endif
 #include "../ta-log.h"
 #include "song.h"
 
@@ -232,6 +238,25 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
   if (dispatch!=NULL) return;
 
   // initialize chip
+#ifdef FURNACE_X16_ONLY
+  switch (sys) {
+    case DIV_SYSTEM_YM2151:
+      dispatch=new DivPlatformArcade;
+      if (isRender) {
+        ((DivPlatformArcade*)dispatch)->setYMFM(eng->getConfInt("arcadeCoreRender",1)==0);
+      } else {
+        ((DivPlatformArcade*)dispatch)->setYMFM(eng->getConfInt("arcadeCore",0)==0);
+      }
+      break;
+    case DIV_SYSTEM_VERA:
+      dispatch=new DivPlatformVERA;
+      break;
+    default:
+      logW("this system is not available in the Commander X16 edition; using dummy platform.");
+      dispatch=new DivPlatformDummy;
+      break;
+  }
+#else
   switch (sys) {
     case DIV_SYSTEM_YMU759:
       dispatch=new DivPlatformOPL;
@@ -795,6 +820,7 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       dispatch=new DivPlatformDummy;
       break;
   }
+#endif
   dispatch->init(eng,chanCount,gotRate,flags);
 
   // initialize output buffers

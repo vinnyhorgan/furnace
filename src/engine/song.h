@@ -491,8 +491,13 @@ struct DivSong {
       systemPanFR[i]=0.0;
     }
     subsong.push_back(new DivSubSong);
+#ifdef FURNACE_X16_ONLY
+    system[0]=DIV_SYSTEM_VERA;
+    system[1]=DIV_SYSTEM_YM2151;
+#else
     system[0]=DIV_SYSTEM_YM2612;
     system[1]=DIV_SYSTEM_SMS;
+#endif
 
     // OPLL default instrument contest winner - piano_guitar_idk by Weeppiko
     nullInsOPLL.type=DIV_INS_OPLL;

@@ -37,8 +37,10 @@ class FurnaceGUIRenderGL: public FurnaceGUIRender {
   int sh_wipe_uAlpha;
   bool sh_wipe_have;
   // -> oscRender
+#ifndef __EMSCRIPTEN__
   int sh_oscRender_vertex;
   int sh_oscRender_fragment;
+#endif
   int sh_oscRender_program;
   int sh_oscRender_uColor;
   int sh_oscRender_uLineWidth;
@@ -99,8 +101,8 @@ class FurnaceGUIRenderGL: public FurnaceGUIRender {
       maxWidth(0),
       maxHeight(0),
       backendName("What?") {
-      memset(quadVertex,0,4*3*sizeof(float));
-      memset(oscVertex,0,4*5*sizeof(float));
-      memset(oscData,0,2048*sizeof(float));
+      memset(quadVertex,0,sizeof(quadVertex));
+      memset(oscVertex,0,sizeof(oscVertex));
+      memset(oscData,0,sizeof(oscData));
     }
 };

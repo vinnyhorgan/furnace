@@ -3,11 +3,15 @@
 #include "util.h"
 #include "../ta-log.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef USE_NFD
 #include <nfd.h>
 #elif defined(ANDROID)
 #include <SDL.h>
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
 #include "../../extern/pfd-fixed/portable-file-dialogs.h"
 #endif
 
@@ -120,6 +124,34 @@ bool FurnaceGUIFileDialog::openLoad(String header, std::vector<String> filter, S
   dialogType=0;
   curPath=path;
 
+#ifdef __EMSCRIPTEN__
+  fileName.clear();
+  hasError=false;
+  EM_ASM({
+    Module.furnacePickedFile = null;
+    Module.furnaceFilePickerDone = false;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = async () => {
+      if (!input.files || !input.files.length) return;
+      const file = input.files[0];
+      const safeName = file.name.replace(/[^A-Za-z0-9._ -]/g, '_');
+      const dir = '/tmp/furnace-import';
+      FS.mkdirTree(dir);
+      const target = dir + '/' + safeName;
+      FS.writeFile(target, new Uint8Array(await file.arrayBuffer()));
+      Module.furnacePickedFile = target;
+      Module.furnaceFilePickerDone = true;
+    };
+    input.oncancel = () => {
+      Module.furnaceFilePickerDone = true;
+    };
+    input.click();
+  });
+  opened=true;
+  return true;
+#endif
+
   // strip excess directory separators
   while (!curPath.empty()) {
     if (curPath[curPath.size()-1]!=DIR_SEPARATOR) break;
@@ -176,7 +208,7 @@ bool FurnaceGUIFileDialog::openLoad(String header, std::vector<String> filter, S
     jniEnv->DeleteLocalRef(class_);
     jniEnv->DeleteLocalRef(activity);
     return true;
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
     dialogO=new pfd::open_file(header,path,filter,allowMultiple?(pfd::opt::multiselect):(pfd::opt::none));
     hasError=!pfd::settings::available();
 #else
@@ -215,6 +247,24 @@ bool FurnaceGUIFileDialog::openSave(String header, std::vector<String> filter, S
 
   dialogType=1;
   curPath=path;
+
+#ifdef __EMSCRIPTEN__
+  fileName.clear();
+  hasError=false;
+  char* picked=(char*)EM_ASM_PTR({
+    const suggested=UTF8ToString($0) || 'song.fur';
+    const value=window.prompt('Save as',suggested);
+    if (!value) return 0;
+    const safe=value.replace(/[^A-Za-z0-9._ -]/g,'_');
+    return stringToNewUTF8('/tmp/'+safe);
+  },hint.c_str());
+  if (picked!=NULL) {
+    fileName.push_back(picked);
+    free(picked);
+  }
+  opened=true;
+  return true;
+#endif
 
   // strip excess directory separators
   while (!curPath.empty()) {
@@ -271,7 +321,7 @@ bool FurnaceGUIFileDialog::openSave(String header, std::vector<String> filter, S
     jniEnv->DeleteLocalRef(class_);
     jniEnv->DeleteLocalRef(activity);
     return true;
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
     dialogS=new pfd::save_file(header,path,filter);
     hasError=!pfd::settings::available();
 #else
@@ -318,7 +368,7 @@ bool FurnaceGUIFileDialog::openSelectDir(String header, String path, double dpiS
 #elif defined(ANDROID)
     hasError=true;
     return false;
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
     dialogF=new pfd::select_folder(header,path);
     hasError=!pfd::settings::available();
 #else
@@ -345,6 +395,9 @@ bool FurnaceGUIFileDialog::openSelectDir(String header, String path, double dpiS
 }
 
 bool FurnaceGUIFileDialog::accepted() {
+#ifdef __EMSCRIPTEN__
+  return !fileName.empty();
+#endif
   if (sysDialog) {
     return (!fileName.empty());
   } else {
@@ -397,6 +450,26 @@ void FurnaceGUIFileDialog::close() {
 }
 
 bool FurnaceGUIFileDialog::render(const ImVec2& min, const ImVec2& max) {
+#ifdef __EMSCRIPTEN__
+  if (dialogType==1) return true;
+  char* picked=(char*)EM_ASM_PTR({
+    if (!Module.furnaceFilePickerDone) return 0;
+    const result=Module.furnacePickedFile || String();
+    Module.furnacePickedFile=null;
+    Module.furnaceFilePickerDone=false;
+    return stringToNewUTF8(result);
+  });
+  if (picked!=NULL) {
+    fileName.clear();
+    if (picked[0]!='\0') {
+      fileName.push_back(picked);
+      curPath="/tmp/furnace-import";
+    }
+    free(picked);
+    return true;
+  }
+  return false;
+#endif
   if (sysDialog) {
 #ifdef USE_NFD
     if (dialogOK) {
@@ -416,7 +489,7 @@ bool FurnaceGUIFileDialog::render(const ImVec2& min, const ImVec2& max) {
 #elif defined(ANDROID)
     // TODO: detect when file picker is closed
     return false;
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
     if (dialogType==2) {
       if (dialogF!=NULL) {
         if (dialogF->ready(0)) {
@@ -481,6 +554,9 @@ bool FurnaceGUIFileDialog::isError() {
 }
 
 String FurnaceGUIFileDialog::getPath() {
+#ifdef __EMSCRIPTEN__
+  return curPath;
+#endif
   if (sysDialog) {
     if (curPath.size()>1) {
       if (curPath[curPath.size()-1]==DIR_SEPARATOR) {
@@ -495,6 +571,9 @@ String FurnaceGUIFileDialog::getPath() {
 }
 
 std::vector<String>& FurnaceGUIFileDialog::getFileName() {
+#ifdef __EMSCRIPTEN__
+  return fileName;
+#endif
   if (sysDialog) {
     return fileName;
   } else {

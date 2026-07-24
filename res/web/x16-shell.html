@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Furnace — Commander X16</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #101114;
+      color: #e8e8e8;
+      font: 15px system-ui, sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      outline: 0;
+    }
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 2;
+      background: #101114;
+    }
+    #loading[hidden] { display: none; }
+    #loading > div { text-align: center; }
+    #loading strong { display: block; margin-bottom: .5rem; color: #b6dc55; }
+    #status { color: #a7aab2; }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div>
+      <strong>Furnace — Commander X16</strong>
+      <span id="status">Loading…</span>
+    </div>
+  </div>
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    const loading = document.getElementById('loading');
+    const status = document.getElementById('status');
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      print: (...args) => console.log(...args),
+      printErr: (...args) => console.error(...args),
+      setStatus: (text) => {
+        if (!text) {
+          loading.hidden = true;
+        } else {
+          status.textContent = text;
+        }
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

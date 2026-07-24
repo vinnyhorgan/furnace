@@ -52,6 +52,18 @@ void FurnaceGUI::initSystemPresets() {
 
   FurnaceGUISysCategory cat;
 
+#ifdef FURNACE_X16_ONLY
+  CATEGORY_BEGIN(_("Commander X16"),_("YM2151 FM synthesis and VERA PSG/PCM"));
+  ENTRY(
+    _("Commander X16"), {
+      CH(DIV_SYSTEM_VERA, 1.0f, 0, ""),
+      CH(DIV_SYSTEM_YM2151, 1.0f, 0, "")
+    }
+  );
+  CATEGORY_END;
+  return;
+#endif
+
   CATEGORY_BEGIN(_("Game consoles"),_("let's play some chiptune making games!"));
   ENTRY(
     _("Sega Genesis"), {

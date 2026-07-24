@@ -83,6 +83,7 @@ const char* sh_wipe_srcV_ES2=
   "}\n";
 
 const char* sh_wipe_srcF_ES2=
+  "precision mediump float;\n"
   "uniform float uAlpha;\n"
   "void main() {\n"
   "  gl_FragColor=vec4(0.0,0.0,0.0,uAlpha);\n"
@@ -587,6 +588,10 @@ const char* FurnaceGUIRenderGL::getAPIVersion() {
 }
 
 void FurnaceGUIRenderGL::setSwapInterval(int swapInterval) {
+#ifdef __EMSCRIPTEN__
+  swapIntervalSet=true;
+  return;
+#endif
   SDL_GL_SetSwapInterval(swapInterval);
   if (swapInterval>0 && SDL_GL_GetSwapInterval()==0) {
     swapIntervalSet=false;
@@ -651,6 +656,9 @@ bool FurnaceGUIRenderGL::init(SDL_Window* win, int swapInterval) {
     return false;
   }
   SDL_GL_MakeCurrent(win,context);
+#ifdef __EMSCRIPTEN__
+  swapIntervalSet=true;
+#else
   SDL_GL_SetSwapInterval(swapInterval);
   if (swapInterval>0 && SDL_GL_GetSwapInterval()==0) {
     swapIntervalSet=false;
@@ -658,6 +666,7 @@ bool FurnaceGUIRenderGL::init(SDL_Window* win, int swapInterval) {
   } else {
     swapIntervalSet=true;
   }
+#endif
 
   LOAD_PROC_MANDATORY(furGenBuffers,PFNGLGENBUFFERSPROC,"glGenBuffers");
   LOAD_PROC_MANDATORY(furBindBuffer,PFNGLBINDBUFFERPROC,"glBindBuffer");
@@ -741,12 +750,16 @@ bool FurnaceGUIRenderGL::init(SDL_Window* win, int swapInterval) {
     sh_wipe_uAlpha=furGetUniformLocation(sh_wipe_program,"uAlpha");
   }
 
+#ifndef __EMSCRIPTEN__
   if ((sh_oscRender_have=createShader(sh_oscRender_srcV,sh_oscRender_srcF,sh_oscRender_vertex,sh_oscRender_fragment,sh_oscRender_program,sh_oscRender_attrib))==true) {
     sh_oscRender_uColor=furGetUniformLocation(sh_oscRender_program,"uColor");
     sh_oscRender_uLineWidth=furGetUniformLocation(sh_oscRender_program,"uLineWidth");
     sh_oscRender_uResolution=furGetUniformLocation(sh_oscRender_program,"uResolution");
     sh_oscRender_oscVal=furGetUniformLocation(sh_oscRender_program,"oscVal");
   }
+#else
+  sh_oscRender_have=false;
+#endif
 #else
   if (glVer==3) {
     if ((sh_wipe_have=createShader(sh_wipe_srcV_130,sh_wipe_srcF_130,sh_wipe_vertex,sh_wipe_fragment,sh_wipe_program,sh_wipe_attrib))==true) {

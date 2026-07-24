@@ -2223,9 +2223,13 @@ void DivEngine::nextBuf(float** in, float** out, int inChans, int outChans, unsi
   std::chrono::steady_clock::time_point ts_processBegin=std::chrono::steady_clock::now();
 
   if (renderPool==NULL) {
+#ifdef __EMSCRIPTEN__
+    unsigned int howManyThreads=0;
+#else
     unsigned int howManyThreads=song.systemLen;
     if (howManyThreads<2) howManyThreads=0;
     if (howManyThreads>renderPoolThreads) howManyThreads=renderPoolThreads;
+#endif
     renderPool=new DivWorkPool(howManyThreads);
   }
 

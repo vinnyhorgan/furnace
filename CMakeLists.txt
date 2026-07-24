@@ -140,6 +140,26 @@ option(CONSOLE_SUBSYSTEM "Build Furnace with Console subsystem on Windows" OFF)
 option(FORCE_CODEVIEW "Force -gcodeview on MinGW GCC" OFF)
 option(FLATPAK_WORKAROUNDS "Enable Flatpak-specific workaround for system file picker" OFF)
 option(NO_INTRO "Disable intro animation entirely" OFF)
+option(FURNACE_X16_ONLY "Build a Commander X16-only edition (YM2151 + VERA)" OFF)
+
+if (EMSCRIPTEN)
+  set(FURNACE_X16_ONLY ON CACHE BOOL "Build a Commander X16-only edition (YM2151 + VERA)" FORCE)
+  set(BUILD_GUI ON CACHE BOOL "Build the tracker" FORCE)
+  set(USE_SDL2 ON CACHE BOOL "Build with SDL2" FORCE)
+  set(SYSTEM_SDL2 OFF CACHE BOOL "Use vendored SDL2" FORCE)
+  set(USE_SNDFILE OFF CACHE BOOL "Build with libsndfile" FORCE)
+  set(USE_RTMIDI OFF CACHE BOOL "Build with MIDI support" FORCE)
+  set(WITH_PORTAUDIO OFF CACHE BOOL "Build with PortAudio" FORCE)
+  set(WITH_JACK OFF CACHE BOOL "Build with JACK" FORCE)
+  set(WITH_LOCALE OFF CACHE BOOL "Use libintl" FORCE)
+  set(USE_BACKWARD OFF CACHE BOOL "Use backward-cpp" FORCE)
+  set(USE_FREETYPE OFF CACHE BOOL "Use FreeType" FORCE)
+  set(WITH_RENDER_SDL OFF CACHE BOOL "Build SDL renderer" FORCE)
+  set(WITH_RENDER_OPENGL ON CACHE BOOL "Build OpenGL renderer" FORCE)
+  set(WITH_RENDER_OPENGL1 OFF CACHE BOOL "Build OpenGL 1.1 renderer" FORCE)
+  set(USE_GLES ON CACHE BOOL "Use OpenGL ES" FORCE)
+  set(NO_INTRO ON CACHE BOOL "Disable intro animation" FORCE)
+endif()
 if (APPLE)
   option(FORCE_APPLE_BIN "Force enable binary installation to /bin" OFF)
   option(MAKE_BUNDLE "Make a bundle" OFF)
@@ -155,6 +175,11 @@ if (ANDROID AND NOT TERMUX)
   set(DEPENDENCIES_DEFINES "IS_MOBILE")
 else()
   set(DEPENDENCIES_DEFINES "")
+endif()
+
+if (FURNACE_X16_ONLY)
+  list(APPEND DEPENDENCIES_DEFINES "FURNACE_X16_ONLY")
+  message(STATUS "Building Commander X16-only edition")
 endif()
 
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
@@ -827,6 +852,30 @@ src/engine/effect/abstract.cpp
 src/engine/effect/dummy.cpp
 )
 
+if (FURNACE_X16_ONLY)
+  foreach(source ${ENGINE_SOURCES})
+    if (source MATCHES "^src/engine/platform/" OR
+        source MATCHES "^extern/(SAASound|vgsound_emu-modified)/")
+      list(REMOVE_ITEM ENGINE_SOURCES ${source})
+    endif()
+  endforeach()
+  list(REMOVE_ITEM ENGINE_SOURCES
+    src/engine/export/amigaValidation.cpp
+    src/engine/export/sapr.cpp
+    src/engine/export/tiuna.cpp
+  )
+  list(APPEND ENGINE_SOURCES
+    src/engine/platform/abstract.cpp
+    src/engine/platform/arcade.cpp
+    src/engine/platform/vera.cpp
+    src/engine/platform/dummy.cpp
+    src/engine/platform/sound/vera_psg.c
+    src/engine/platform/sound/vera_pcm.c
+    src/engine/platform/sound/ymfm/ymfm_opm.cpp
+    src/engine/platform/sound/ymfm/ymfm_opz.cpp
+  )
+endif()
+
 if (USE_SNDFILE)
   list(APPEND ENGINE_SOURCES src/engine/sfWrapper.cpp)
 endif()
@@ -942,6 +991,14 @@ src/gui/volMeter.cpp
 src/gui/xyOsc.cpp
 src/gui/gui.cpp
 )
+
+if (FURNACE_X16_ONLY)
+  list(REMOVE_ITEM GUI_SOURCES
+    src/gui/font_plexSansJP.cpp
+    src/gui/font_plexSansKR.cpp
+    src/gui/font_unifont.cpp
+  )
+endif()
 
 if (NOT NO_INTRO)
   list(APPEND GUI_SOURCES src/gui/introTune.cpp)
@@ -1251,6 +1308,25 @@ endif()
 target_include_directories(${FURNACE} SYSTEM PRIVATE ${DEPENDENCIES_INCLUDE_DIRS})
 target_compile_options(${FURNACE} PRIVATE ${DEPENDENCIES_COMPILE_OPTIONS})
 target_link_libraries(${FURNACE} PRIVATE ${DEPENDENCIES_LIBRARIES})
+if (EMSCRIPTEN)
+  set(FURNACE_WEB_PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/res/web/x16-pre.js")
+  set(FURNACE_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/res/web/x16-shell.html")
+  set_target_properties(${FURNACE} PROPERTIES SUFFIX ".html")
+  set_property(TARGET ${FURNACE} APPEND PROPERTY LINK_DEPENDS
+    "${FURNACE_WEB_PRE_JS}"
+    "${FURNACE_WEB_SHELL}"
+  )
+  target_link_options(${FURNACE} PRIVATE
+    "-sALLOW_MEMORY_GROWTH=1"
+    "-sSTACK_SIZE=5242880"
+    "-sFORCE_FILESYSTEM=1"
+    "-sMIN_WEBGL_VERSION=1"
+    "-sMAX_WEBGL_VERSION=2"
+    "-lidbfs.js"
+    "--pre-js=${FURNACE_WEB_PRE_JS}"
+    "--shell-file=${FURNACE_WEB_SHELL}"
+  )
+endif()
 if (PKG_CONFIG_FOUND AND (SYSTEM_FMT OR SYSTEM_LIBSNDFILE OR SYSTEM_ZLIB OR SYSTEM_SDL2 OR SYSTEM_RTMIDI OR WITH_JACK))
   if ("${CMAKE_VERSION}" VERSION_LESS "3.13")
     message(WARNING

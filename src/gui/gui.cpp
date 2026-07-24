@@ -42,6 +42,10 @@
 #include <fmt/printf.h>
 #include <stdexcept>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
@@ -2366,6 +2370,20 @@ int FurnaceGUI::save(String path, int dmfVersion) {
     }
   }
   fclose(outFile);
+#ifdef __EMSCRIPTEN__
+  EM_ASM({
+    const path=UTF8ToString($0);
+    const data=FS.readFile(path);
+    const blob=new Blob([data],{type:'application/octet-stream'});
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(blob);
+    link.download=path.substring(path.lastIndexOf('/')+1);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href),1000);
+  },path.c_str());
+#endif
   w->finish();
   backupLock.lock();
   curFileName=path;
@@ -3746,6 +3764,10 @@ bool FurnaceGUI::loop() {
 #else
   bool doThreadedInput=!settings.noThreadedInput;
 #endif
+#ifdef __EMSCRIPTEN__
+  static bool firstLoop=true;
+  if (firstLoop) {
+#endif
   if (doThreadedInput) {
     logD("key input: event filter");
     SDL_SetEventFilter(_processEvent,this);
@@ -3757,8 +3779,15 @@ bool FurnaceGUI::loop() {
     showError(_("Furnace has been started in Safe Mode.\nthis means that:\n\n- software rendering is being used\n- audio output may not work\n- font loading is disabled\n\ncheck any settings which may have made Furnace start up in this mode.\nfont loading is one of these."));
     settingsOpen=true;
   }
+#ifdef __EMSCRIPTEN__
+    firstLoop=false;
+  }
 
+  if (quit) return true;
+  do {
+#else
   while (!quit) {
+#endif
     SDL_Event ev;
     if (e->isPlaying()) {
       WAKE_UP;
@@ -6026,6 +6055,20 @@ bool FurnaceGUI::loop() {
                 if (outFile!=NULL) {
                   fwrite(i.data->getFinalBuf(),1,i.data->size(),outFile);
                   fclose(outFile);
+#ifdef __EMSCRIPTEN__
+                  EM_ASM({
+                    const path=UTF8ToString($0);
+                    const data=FS.readFile(path);
+                    const blob=new Blob([data],{type:'application/octet-stream'});
+                    const link=document.createElement('a');
+                    link.href=URL.createObjectURL(blob);
+                    link.download=path.substring(path.lastIndexOf('/')+1);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(link.href),1000);
+                  },path.c_str());
+#endif
                 } else {
                   // TODO: handle failure here
                 }
@@ -7388,8 +7431,12 @@ bool FurnaceGUI::loop() {
     if (SDL_GetWindowFlags(sdlWin)&SDL_WINDOW_MINIMIZED) {
       SDL_Delay(100);
     }
+#ifdef __EMSCRIPTEN__
+  } while (false);
+#else
   }
-  return false;
+#endif
+  return quit;
 }
 
 bool FurnaceGUI::init() {

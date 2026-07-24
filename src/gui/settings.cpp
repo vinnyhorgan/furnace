@@ -6971,6 +6971,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     }
 
     // four fallback fonts
+#ifndef FURNACE_X16_ONLY
     if (settings.loadJapanese ||
         settings.loadChinese ||
         settings.loadChineseTraditional ||
@@ -6985,6 +6986,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
       mainFont=addFontZlib(font_plexSansKR_compressed_data,font_plexSansKR_compressed_size,MAX(1,e->getConfInt("mainFontSize",18)*dpiScale),&fc1,fontRange);
       mainFont=addFontZlib(font_unifont_compressed_data,font_unifont_compressed_size,MAX(1,e->getConfInt("mainFontSize",18)*dpiScale),&fc1,fontRange);
     }
+#endif
 
     ImFontConfig fc;
     fc.MergeMode=true;
@@ -7037,6 +7039,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     }
 
     // four fallback fonts
+#ifndef FURNACE_X16_ONLY
     if (settings.loadFallbackPat && (settings.loadJapanese ||
         settings.loadChinese ||
         settings.loadChineseTraditional ||
@@ -7050,6 +7053,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
       patFont=addFontZlib(font_plexSansKR_compressed_data,font_plexSansKR_compressed_size,MAX(1,e->getConfInt("patFontSize",18)*dpiScale),&fc1,fontRange);
       patFont=addFontZlib(font_unifont_compressed_data,font_unifont_compressed_size,MAX(1,e->getConfInt("patFontSize",18)*dpiScale),&fc1,fontRange);
     }
+#endif
 
     // 0x39B = Λ
     // Հայերեն
@@ -7081,6 +7085,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     if ((bigFont=addFontZlib(font_plexSans_compressed_data,font_plexSans_compressed_size,MAX(1,40*dpiScale),&fontConfB,fontRangeB))==NULL) {
       logE("could not load big UI font!");
     }
+#ifndef FURNACE_X16_ONLY
     fontConfB.MergeMode=true;
     if ((bigFont=addFontZlib(font_plexSansJP_compressed_data,font_plexSansJP_compressed_size,MAX(1,40*dpiScale),&fontConfB,fontRangeB))==NULL) {
       logE("could not load big UI font (japanese)!");
@@ -7091,6 +7096,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     if ((bigFont=addFontZlib(font_unifont_compressed_data,font_unifont_compressed_size,MAX(1,40*dpiScale),&fontConfB,fontRangeB))==NULL) {
       logE("could not load big UI font (fallback)!");
     }
+#endif
 
     if (settings.mainFontSize==settings.headFontSize && settings.headFont<5 && builtinFont[settings.headFont]==builtinFont[settings.mainFont]) {
       logD("using main font for header font.");

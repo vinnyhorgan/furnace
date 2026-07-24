@@ -720,7 +720,11 @@ bool DivExportZSM::go(DivEngine* eng) {
   running=true;
   failed=false;
   mustAbort=false;
+#ifdef __EMSCRIPTEN__
+  run();
+#else
   exportThread=new std::thread(&DivExportZSM::run,this);
+#endif
   return true;
 }
 

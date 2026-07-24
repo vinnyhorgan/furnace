@@ -27,7 +27,11 @@ const unsigned char* builtinFont[]={
   font_liberationSans_compressed_data,
   font_exo_compressed_data,
   font_proggyClean_compressed_data,
+#ifdef FURNACE_X16_ONLY
+  font_plexSans_compressed_data
+#else
   font_unifont_compressed_data
+#endif
 };
 
 const unsigned int builtinFontLen[]={
@@ -35,7 +39,11 @@ const unsigned int builtinFontLen[]={
   font_liberationSans_compressed_size,
   font_exo_compressed_size,
   font_proggyClean_compressed_size,
+#ifdef FURNACE_X16_ONLY
+  font_plexSans_compressed_size
+#else
   font_unifont_compressed_size
+#endif
 };
 
 const unsigned char* builtinFontM[]={
@@ -43,7 +51,11 @@ const unsigned char* builtinFontM[]={
   font_mononoki_compressed_data,
   font_ptMono_compressed_data,
   font_proggyClean_compressed_data,
+#ifdef FURNACE_X16_ONLY
+  font_plexMono_compressed_data
+#else
   font_unifont_compressed_data
+#endif
 };
 
 const unsigned int builtinFontMLen[]={
@@ -51,5 +63,9 @@ const unsigned int builtinFontMLen[]={
   font_mononoki_compressed_size,
   font_ptMono_compressed_size,
   font_proggyClean_compressed_size,
+#ifdef FURNACE_X16_ONLY
+  font_plexMono_compressed_size
+#else
   font_unifont_compressed_size
+#endif
 };

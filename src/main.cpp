@@ -27,6 +27,10 @@
 #include "fileutils.h"
 #include "engine/engine.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <combaseapi.h>
@@ -539,6 +543,28 @@ static void handleTermGUI(int) {
   g.requestQuit();
 }
 #endif
+#endif
+
+#if defined(HAVE_GUI) && defined(__EMSCRIPTEN__)
+static void webMainLoop(void*) {
+  static bool firstFrame=true;
+  if (firstFrame) {
+    EM_ASM({
+      const loading=document.getElementById('loading');
+      if (loading) loading.hidden=true;
+    });
+    firstFrame=false;
+  }
+  if (g.loop()) {
+    emscripten_cancel_main_loop();
+    logI("closing GUI.");
+    g.finish(true);
+    logI("stopping engine.");
+    e.quit(false);
+    finishLogFile();
+    e.everythingOK();
+  }
+}
 #endif
 
 // TODO: CoInitializeEx on Windows?
@@ -1085,9 +1111,13 @@ int main(int argc, char** argv) {
   sigaction(SIGTERM,&termsa,NULL);
 #endif
 
+#ifdef __EMSCRIPTEN__
+  emscripten_set_main_loop_arg(webMainLoop,NULL,0,true);
+#else
   g.loop();
   logI("closing GUI.");
   g.finish(true);
+#endif
 #else
   logE("GUI requested but GUI not compiled!");
 #endif

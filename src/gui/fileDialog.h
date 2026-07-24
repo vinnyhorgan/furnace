@@ -19,7 +19,7 @@
 
 #elif defined(ANDROID)
 #include <jni.h>
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
 namespace pfd {
   class open_file;
   class save_file;
@@ -50,7 +50,7 @@ class FurnaceGUIFileDialog {
   void* dialogO;
   void* dialogS;
   void* dialogF;
-#elif (!defined(SUPPORT_XP) || !defined(_WIN32))
+#elif !defined(__EMSCRIPTEN__) && (!defined(SUPPORT_XP) || !defined(_WIN32))
   pfd::open_file* dialogO;
   pfd::save_file* dialogS;
   pfd::select_folder* dialogF;
@@ -74,7 +74,11 @@ class FurnaceGUIFileDialog {
     String getPath();
     std::vector<String>& getFileName();
     explicit FurnaceGUIFileDialog(bool system):
+#ifdef __EMSCRIPTEN__
+      sysDialog(false),
+#else
       sysDialog(system),
+#endif
       opened(false),
       dialogType(0),
       hasError(false),

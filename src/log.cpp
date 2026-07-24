@@ -191,6 +191,11 @@ void _logFileThread() {
 }
 
 bool startLogFile(const char* path) {
+#ifdef __EMSCRIPTEN__
+  // Browser builds log to the JavaScript console; std::thread is unavailable
+  // in the deliberately single-threaded web target.
+  return false;
+#endif
   if (logFileAvail) return true;
 
   // rotate log file if possible
