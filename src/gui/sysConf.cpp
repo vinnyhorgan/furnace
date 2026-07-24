@@ -29,6 +29,17 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
   bool restart=modifyOnChange;
   bool supportsCustomRate=true;
 
+#ifdef FURNACE_KRI_ONLY
+  if (type==DIV_SYSTEM_YM2151 || type==DIV_SYSTEM_KRI_VERA) {
+    ImGui::TextWrapped(
+      type==DIV_SYSTEM_YM2151
+        ?_("fixed kri opm: 3.58 mhz")
+        :_("fixed kri psg: 25 mhz, eight voices, no pcm")
+    );
+    return false;
+  }
+#endif
+
   switch (type) {
     case DIV_SYSTEM_YM2612:
     case DIV_SYSTEM_YM2612_EXT: 

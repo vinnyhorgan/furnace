@@ -1,0 +1,9 @@
+// generated from res/kri-demos.txt; edit that manifest, not this output.
+struct KriDemoEntry {
+  const char* group;
+  const char* name;
+  const char* path;
+};
+
+static const KriDemoEntry kriDemos[]={
+@FURNACE_KRI_DEMO_CPP_ENTRIES@};

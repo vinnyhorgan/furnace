@@ -1038,6 +1038,18 @@ bool DivEngine::changeSystem(int index, DivSystem which, bool preserveOrder) {
     lastError=_("invalid index");
     return false;
   }
+#ifdef FURNACE_KRI_ONLY
+  if (which!=DIV_SYSTEM_YM2151 && which!=DIV_SYSTEM_KRI_VERA) {
+    lastError=_("kri only supports its opm and psg");
+    return false;
+  }
+  for (int i=0; i<song.systemLen; i++) {
+    if (i!=index && song.system[i]==which) {
+      lastError=_("kri supports at most one of each audio chip");
+      return false;
+    }
+  }
+#endif
   if (chans-getChannelCount(song.system[index])+getChannelCount(which)>DIV_MAX_CHANS) {
     lastError=fmt::sprintf(_("max number of total channels is %d"),DIV_MAX_CHANS);
     return false;
@@ -1089,6 +1101,18 @@ bool DivEngine::changeSystem(int index, DivSystem which, bool preserveOrder) {
 }
 
 bool DivEngine::addSystem(DivSystem which) {
+#ifdef FURNACE_KRI_ONLY
+  if (which!=DIV_SYSTEM_YM2151 && which!=DIV_SYSTEM_KRI_VERA) {
+    lastError=_("kri only supports its opm and psg");
+    return false;
+  }
+  for (int i=0; i<song.systemLen; i++) {
+    if (song.system[i]==which) {
+      lastError=_("kri supports at most one of each audio chip");
+      return false;
+    }
+  }
+#endif
   if (song.systemLen>=DIV_MAX_CHIPS) {
     lastError=fmt::sprintf(_("max number of systems is %d"),DIV_MAX_CHIPS);
     return false;

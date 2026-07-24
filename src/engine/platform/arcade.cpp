@@ -991,6 +991,9 @@ void DivPlatformArcade::reset() {
 }
 
 void DivPlatformArcade::setFlags(const DivConfig& flags) {
+#ifdef FURNACE_KRI_ONLY
+  chipClock=COLOR_NTSC;
+#else
   switch (flags.getInt("clockSel",0)) {
     case 1:
       chipClock=COLOR_PAL*4.0/5.0;
@@ -1003,6 +1006,7 @@ void DivPlatformArcade::setFlags(const DivConfig& flags) {
       break;
   }
   CHECK_CUSTOM_CLOCK;
+#endif
 
   baseFreqOff=round(1536.0*(log((COLOR_NTSC/(double)chipClock))/log(2.0)));
 

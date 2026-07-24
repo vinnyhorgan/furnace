@@ -9,4 +9,8 @@ EM_CACHE="$cache_dir" emcmake cmake -S . -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release
 EM_CACHE="$cache_dir" cmake --build "$build_dir" -j"$jobs"
 
+install --mode=0644 res/web/coi-serviceworker.js "$build_dir/coi-serviceworker.js"
+install --mode=0644 res/icon_16x16.svg "$build_dir/favicon.svg"
+install --mode=0644 res/icon.ico "$build_dir/favicon.ico"
+
 echo "kri web build: $build_dir/furnace.html"

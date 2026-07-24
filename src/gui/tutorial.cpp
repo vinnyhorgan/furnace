@@ -836,12 +836,39 @@ void FurnaceGUI::drawTutorial() {
   if (!tutorial.protoWelcome) {
     ImGui::OpenPopup("Welcome");
   }
+#ifdef FURNACE_KRI_ONLY
+  ImGui::SetNextWindowSizeConstraints(
+    ImVec2(480.0f*dpiScale,0.0f),
+    ImVec2(560.0f*dpiScale,FLT_MAX)
+  );
+#endif
   if (ImGui::BeginPopupModal("Welcome",NULL,ImGuiWindowFlags_AlwaysAutoResize|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoTitleBar)) {
     ImGui::PushFont(bigFont);
+#ifdef FURNACE_KRI_ONLY
+    ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize("kri").x)*0.5);
+    ImGui::Text("kri");
+#else
     ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize("Welcome!").x)*0.5);
     ImGui::Text(_("Welcome!"));
+#endif
     ImGui::PopFont();
 
+#ifdef FURNACE_KRI_ONLY
+    ImGui::TextWrapped(_(
+      "a focused music tracker for the kri fantasy machine.\n\n"
+      "kri has one fixed 3.58 mhz yamaha opm and eight 25 mhz "
+      "vera-compatible psg voices. there is no pcm.\n\n"
+      "use the demos menu to hear the hardware, space to enter edit mode, "
+      "and enter to play or stop. save downloads a .fur project; export "
+      "wave renders audio and export zsm creates a raw register stream."
+    ));
+
+    ImGui::Separator();
+    ImGui::TextWrapped(_(
+      "browser storage keeps your settings and recovery backups locally. "
+      "download important songs explicitly."
+    ));
+#else
     ImGui::Text(_("welcome to Furnace, the biggest open-source chiptune tracker!"));
 
     ImGui::Separator();
@@ -877,8 +904,15 @@ void FurnaceGUI::drawTutorial() {
 
     ImGui::TextWrapped(_("if you find any issues, be sure to report them! the issue tracker is here:"));
     CLICK_TO_OPEN("https://github.com/tildearrow/furnace/issues")
+#endif
 
-    if (ImGui::Button(_("OK"))) {
+    if (ImGui::Button(
+#ifdef FURNACE_KRI_ONLY
+          "ok"
+#else
+          _("OK")
+#endif
+        )) {
       tutorial.protoWelcome=true;
       commitTutorial();
       e->saveConf();

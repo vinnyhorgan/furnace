@@ -1,0 +1,19 @@
+opm|hope for the dream|demos/opm/hope_for_the_dream.fur
+opm|lagrange point|demos/opm/lagrange_point_2023.fur
+opm|the king of c.r.i.s.p|demos/opm/the_king_of_crisp.fur
+opm|vortex|demos/opm/vortex.fur
+opm|waterworld - map|demos/opm/waterworld_map.fur
+opm|salamander - starfield|demos/arcade/Salamander_Starfield.fur
+opm|wicked express|demos/x68000/Wicked_Express.fur
+opm|time man|demos/x68000/TimeMan.fur
+psg|göte går på tivoli|demos/x16/Cafe - 010 Editor 2.0kg.fur
+psg|exerion ii - track 2|demos/x16/Exerion_II_Tune.fur
+psg|identity believer|demos/x16/Identity_Believer.fur
+psg|melody of certain feelings|demos/x16/Melody of Certain Feelings.fur
+psg|her 11|demos/x16/her11.fur
+psg|keygen 19|demos/x16/keygen19.fur
+psg|watching paint dry|demos/x16/watching_paint_dry.fur
+opm + psg|shades of blue|demos/x16/Shades of Blue.fur
+opm + psg|rising blue lightning|demos/x16/TFV_Rise.fur
+opm + psg|dance with me|demos/x16/dance with me.fur
+opm + psg|getting richer|demos/x16/richca.fur

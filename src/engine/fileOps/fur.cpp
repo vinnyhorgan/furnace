@@ -64,84 +64,313 @@ struct PatToWrite {
 };
 
 #ifdef FURNACE_KRI_ONLY
-static void moveKriSongChannel(DivSubSong* subSong, int source, int destination) {
-  if (source==destination) return;
-
-  subSong->pat[destination].wipePatterns();
-  subSong->pat[destination].effectCols=subSong->pat[source].effectCols;
-  for (int i=0; i<DIV_MAX_PATTERNS; i++) {
-    subSong->pat[destination].data[i]=subSong->pat[source].data[i];
-    subSong->pat[source].data[i]=NULL;
-  }
-
-  memcpy(
-    subSong->orders.ord[destination],
-    subSong->orders.ord[source],
-    DIV_MAX_PATTERNS*sizeof(unsigned char)
-  );
-  memset(subSong->orders.ord[source],0,DIV_MAX_PATTERNS*sizeof(unsigned char));
-
-  subSong->chanShow[destination]=subSong->chanShow[source];
-  subSong->chanShowChanOsc[destination]=subSong->chanShowChanOsc[source];
-  subSong->chanCollapse[destination]=subSong->chanCollapse[source];
-  subSong->chanName[destination]=std::move(subSong->chanName[source]);
-  subSong->chanShortName[destination]=std::move(subSong->chanShortName[source]);
-}
-
-static bool kriPatternHasData(const DivPattern* pattern, int rows, int effectCols) {
+static bool kriPatternRowHasData(const DivPattern* pattern, int row, int effectCols) {
   if (pattern==NULL) return false;
   int columns=MIN(4+(effectCols*2),DIV_MAX_COLS);
-  for (int row=0; row<rows; row++) {
-    if (pattern->data[row][0]!=0 || pattern->data[row][1]!=0) return true;
-    for (int column=2; column<columns; column++) {
-      if (pattern->data[row][column]!=-1) return true;
-    }
+  if (pattern->data[row][0]!=0 || pattern->data[row][1]!=0) return true;
+  for (int column=2; column<columns; column++) {
+    if (pattern->data[row][column]!=-1) return true;
   }
   return false;
 }
 
-static void convertLegacyVERAToKri(DivEngine* engine, DivSong& song) {
-  int oldChannelCount=0;
-  int newChannelCount=0;
-  int droppedChannelsWithData=0;
-  std::vector<int> keptChannels;
+static bool kriNoteStarts(const DivPattern* pattern, int row) {
+  if (pattern==NULL) return false;
+  short note=pattern->data[row][0];
+  return note>0 && note<100;
+}
 
-  for (int i=0; i<song.systemLen; i++) {
-    int channelCount=engine->getChannelCount(song.system[i]);
-    int keptChannelCount=channelCount;
-    if (song.system[i]==DIV_SYSTEM_VERA) {
-      keptChannelCount=8;
-      song.system[i]=DIV_SYSTEM_KRI_VERA;
-      for (DivSubSong* subSong: song.subsong) {
-        for (int channel=oldChannelCount+8; channel<oldChannelCount+channelCount; channel++) {
-          for (int pattern=0; pattern<DIV_MAX_PATTERNS; pattern++) {
-            if (kriPatternHasData(
-                  subSong->pat[channel].data[pattern],
-                  subSong->patLen,
-                  subSong->pat[channel].effectCols
-                )) {
-              droppedChannelsWithData++;
-              break;
-            }
+static bool kriNoteStops(const DivPattern* pattern, int row) {
+  if (pattern==NULL) return false;
+  short note=pattern->data[row][0];
+  return note==100 || note==101;
+}
+
+struct KriVoicePlan {
+  int destination[16];
+  int score[16];
+  int collisions;
+
+  KriVoicePlan(): collisions(0) {
+    memset(destination,-1,sizeof(destination));
+    memset(score,0,sizeof(score));
+  }
+};
+
+/**
+ * Pack a legacy VERA's musical lines into eight physical kri voices.
+ *
+ * A channel is considered live from note-on until note-off. Lines which never
+ * overlap may share a destination without losing any notes. If a module truly
+ * exceeds eight simultaneous/conflicting voices, the least active lines share
+ * the destination with the fewest conflicts; row conflicts are then resolved
+ * in favour of the more musically active line.
+ */
+static KriVoicePlan planKriVoices(DivSubSong* subSong, int firstChannel) {
+  KriVoicePlan plan;
+  bool conflicts[16][16];
+  bool active[16];
+  memset(conflicts,0,sizeof(conflicts));
+  memset(active,0,sizeof(active));
+
+  for (int order=0; order<subSong->ordersLen; order++) {
+    for (int row=0; row<subSong->patLen; row++) {
+      bool used[16];
+      memset(used,0,sizeof(used));
+      for (int channel=0; channel<16; channel++) {
+        DivChannelData& channelData=subSong->pat[firstChannel+channel];
+        DivPattern* pattern=channelData.data[
+          subSong->orders.ord[firstChannel+channel][order]
+        ];
+        bool rowHasData=kriPatternRowHasData(pattern,row,channelData.effectCols);
+        bool starts=kriNoteStarts(pattern,row);
+        bool stops=kriNoteStops(pattern,row);
+        used[channel]=active[channel] || rowHasData || starts;
+        if (starts) {
+          active[channel]=true;
+          plan.score[channel]+=100;
+        }
+        if (rowHasData) plan.score[channel]++;
+        if (stops) active[channel]=false;
+      }
+      for (int first=0; first<16; first++) {
+        if (!used[first]) continue;
+        for (int second=first+1; second<16; second++) {
+          if (used[second]) {
+            conflicts[first][second]=true;
+            conflicts[second][first]=true;
           }
         }
       }
     }
-    for (int channel=0; channel<keptChannelCount; channel++) {
-      keptChannels.push_back(oldChannelCount+channel);
-    }
-    oldChannelCount+=channelCount;
-    newChannelCount+=keptChannelCount;
   }
 
-  if (oldChannelCount==newChannelCount) return;
+  std::vector<int> channels;
+  for (int channel=0; channel<16; channel++) {
+    if (plan.score[channel]>0) channels.push_back(channel);
+  }
+  std::stable_sort(channels.begin(),channels.end(),[&](int first, int second) {
+    return plan.score[first]>plan.score[second];
+  });
 
+  for (int channel: channels) {
+    int bestVoice=-1;
+    int bestConflicts=17;
+    for (int voice=0; voice<8; voice++) {
+      int voiceConflicts=0;
+      for (int other: channels) {
+        if (plan.destination[other]==voice && conflicts[channel][other]) {
+          voiceConflicts++;
+        }
+      }
+      if (voiceConflicts<bestConflicts) {
+        bestVoice=voice;
+        bestConflicts=voiceConflicts;
+        if (voiceConflicts==0) break;
+      }
+    }
+    plan.destination[channel]=bestVoice;
+    plan.collisions+=bestConflicts;
+  }
+
+  // Empty source channels still receive stable destinations so the mapping
+  // remains deterministic.
+  int nextEmptyVoice=0;
+  for (int channel=0; channel<16; channel++) {
+    if (plan.destination[channel]>=0) continue;
+    plan.destination[channel]=nextEmptyVoice++%8;
+  }
+  return plan;
+}
+
+static void copyKriPatternRow(
+  DivPattern* destination,
+  const DivPattern* source,
+  int row,
+  int sourceEffectCols,
+  int rememberedInstrument,
+  int rememberedVolume
+) {
+  if (source==NULL) return;
+  int columns=MIN(4+(sourceEffectCols*2),DIV_MAX_COLS);
+  bool destinationHasNote=
+    destination->data[row][0]!=0 || destination->data[row][1]!=0;
+  bool sourceHasNote=source->data[row][0]!=0 || source->data[row][1]!=0;
+  if (destinationHasNote) return;
+  if (sourceHasNote) {
+    destination->data[row][0]=source->data[row][0];
+    destination->data[row][1]=source->data[row][1];
+    for (int column=2; column<columns; column++) {
+      if (source->data[row][column]!=-1) {
+        destination->data[row][column]=source->data[row][column];
+      }
+    }
+    // Instrument and volume state belonged to the original source channel.
+    // Restore them when that musical line takes over a packed physical voice.
+    if (destination->data[row][2]==-1 && rememberedInstrument>=0)
+      destination->data[row][2]=rememberedInstrument;
+    if (destination->data[row][3]==-1 && rememberedVolume>=0)
+      destination->data[row][3]=rememberedVolume;
+    return;
+  }
+  for (int column=2; column<columns; column++) {
+    if (destination->data[row][column]==-1 && source->data[row][column]!=-1) {
+      destination->data[row][column]=source->data[row][column];
+    }
+  }
+}
+
+static void transferKriChannel(
+  DivSubSong* subSong,
+  DivChannelData* converted,
+  int source,
+  int destination
+) {
+  converted[destination].effectCols=subSong->pat[source].effectCols;
+  for (int pattern=0; pattern<DIV_MAX_PATTERNS; pattern++) {
+    converted[destination].data[pattern]=subSong->pat[source].data[pattern];
+    subSong->pat[source].data[pattern]=NULL;
+  }
+}
+
+static int convertLegacyVERAToKri(DivEngine* engine, DivSong& song) {
+  int oldChannelCount=0;
+  int newChannelCount=0;
+  bool legacyVera[DIV_MAX_CHIPS];
+  bool hasLegacyVera=false;
+  memset(legacyVera,0,sizeof(legacyVera));
+  for (int i=0; i<song.systemLen; i++) {
+    int channelCount=engine->getChannelCount(song.system[i]);
+    oldChannelCount+=channelCount;
+    if (song.system[i]==DIV_SYSTEM_VERA) {
+      legacyVera[i]=true;
+      hasLegacyVera=true;
+      song.system[i]=DIV_SYSTEM_KRI_VERA;
+      channelCount=8;
+    }
+    newChannelCount+=channelCount;
+  }
+  if (!hasLegacyVera) return 0;
+
+  int totalCollisions=0;
   for (DivSubSong* subSong: song.subsong) {
-    for (int destination=0; destination<newChannelCount; destination++) {
-      moveKriSongChannel(subSong,keptChannels[destination],destination);
+    DivChannelData* converted=new DivChannelData[DIV_MAX_CHANS];
+    unsigned char convertedOrders[DIV_MAX_CHANS][DIV_MAX_PATTERNS];
+    bool convertedShow[DIV_MAX_CHANS];
+    bool convertedShowOsc[DIV_MAX_CHANS];
+    unsigned char convertedCollapse[DIV_MAX_CHANS];
+    String convertedName[DIV_MAX_CHANS];
+    String convertedShortName[DIV_MAX_CHANS];
+    memset(convertedOrders,0,sizeof(convertedOrders));
+    memset(convertedShow,true,sizeof(convertedShow));
+    memset(convertedShowOsc,true,sizeof(convertedShowOsc));
+    memset(convertedCollapse,0,sizeof(convertedCollapse));
+
+    int sourceOffset=0;
+    int destinationOffset=0;
+    for (int system=0; system<song.systemLen; system++) {
+      if (!legacyVera[system]) {
+        int channelCount=engine->getChannelCount(song.system[system]);
+        for (int channel=0; channel<channelCount; channel++) {
+          int source=sourceOffset+channel;
+          int destination=destinationOffset+channel;
+          transferKriChannel(subSong,converted,source,destination);
+          memcpy(convertedOrders[destination],subSong->orders.ord[source],DIV_MAX_PATTERNS);
+          convertedShow[destination]=subSong->chanShow[source];
+          convertedShowOsc[destination]=subSong->chanShowChanOsc[source];
+          convertedCollapse[destination]=subSong->chanCollapse[source];
+          convertedName[destination]=std::move(subSong->chanName[source]);
+          convertedShortName[destination]=std::move(subSong->chanShortName[source]);
+        }
+        sourceOffset+=channelCount;
+        destinationOffset+=channelCount;
+        continue;
+      }
+
+      KriVoicePlan plan=planKriVoices(subSong,sourceOffset);
+      totalCollisions+=plan.collisions;
+      std::vector<int> sourcePriority;
+      for (int channel=0; channel<16; channel++) sourcePriority.push_back(channel);
+      std::stable_sort(sourcePriority.begin(),sourcePriority.end(),[&](int first, int second) {
+        return plan.score[first]>plan.score[second];
+      });
+
+      for (int voice=0; voice<8; voice++) {
+        int destination=destinationOffset+voice;
+        int rememberedInstrument[16];
+        int rememberedVolume[16];
+        memset(rememberedInstrument,-1,sizeof(rememberedInstrument));
+        memset(rememberedVolume,-1,sizeof(rememberedVolume));
+        converted[destination].effectCols=1;
+        for (int channel=0; channel<16; channel++) {
+          if (plan.destination[channel]==voice) {
+            converted[destination].effectCols=MAX(
+              converted[destination].effectCols,
+              subSong->pat[sourceOffset+channel].effectCols
+            );
+          }
+        }
+        for (int order=0; order<subSong->ordersLen; order++) {
+          convertedOrders[destination][order]=order;
+          DivPattern* destinationPattern=NULL;
+          for (int row=0; row<subSong->patLen; row++) {
+            for (int channel: sourcePriority) {
+              if (plan.destination[channel]!=voice) continue;
+              DivChannelData& sourceData=subSong->pat[sourceOffset+channel];
+              DivPattern* sourcePattern=
+                sourceData.data[subSong->orders.ord[sourceOffset+channel][order]];
+              if (sourcePattern!=NULL) {
+                if (sourcePattern->data[row][2]>=0) {
+                  rememberedInstrument[channel]=sourcePattern->data[row][2];
+                }
+                if (sourcePattern->data[row][3]>=0) {
+                  rememberedVolume[channel]=sourcePattern->data[row][3];
+                }
+              }
+              if (!kriPatternRowHasData(sourcePattern,row,sourceData.effectCols)) {
+                continue;
+              }
+              if (destinationPattern==NULL) {
+                destinationPattern=converted[destination].getPattern(order,true);
+              }
+              copyKriPatternRow(
+                destinationPattern,
+                sourcePattern,
+                row,
+                sourceData.effectCols,
+                rememberedInstrument[channel],
+                rememberedVolume[channel]
+              );
+            }
+          }
+        }
+        convertedName[destination]=fmt::sprintf("kri voice %d",voice+1);
+        convertedShortName[destination]=fmt::sprintf("k%d",voice+1);
+      }
+      // Legacy VERA has sixteen PSG channels followed by one PCM channel.
+      // The allocator consumes the PSG lines; skip the removed PCM channel
+      // before copying any following system (normally the OPM).
+      sourceOffset+=engine->getChannelCount(DIV_SYSTEM_VERA);
+      destinationOffset+=8;
+    }
+
+    for (int channel=0; channel<oldChannelCount; channel++) {
+      subSong->pat[channel].wipePatterns();
+    }
+    for (int channel=0; channel<newChannelCount; channel++) {
+      subSong->pat[channel].effectCols=converted[channel].effectCols;
+      for (int pattern=0; pattern<DIV_MAX_PATTERNS; pattern++) {
+        subSong->pat[channel].data[pattern]=converted[channel].data[pattern];
+        converted[channel].data[pattern]=NULL;
+      }
+      memcpy(subSong->orders.ord[channel],convertedOrders[channel],DIV_MAX_PATTERNS);
+      subSong->chanShow[channel]=convertedShow[channel];
+      subSong->chanShowChanOsc[channel]=convertedShowOsc[channel];
+      subSong->chanCollapse[channel]=convertedCollapse[channel];
+      subSong->chanName[channel]=std::move(convertedName[channel]);
+      subSong->chanShortName[channel]=std::move(convertedShortName[channel]);
     }
     for (int channel=newChannelCount; channel<oldChannelCount; channel++) {
-      subSong->pat[channel].wipePatterns();
       subSong->pat[channel].effectCols=1;
       memset(subSong->orders.ord[channel],0,DIV_MAX_PATTERNS*sizeof(unsigned char));
       subSong->chanShow[channel]=true;
@@ -150,18 +379,57 @@ static void convertLegacyVERAToKri(DivEngine* engine, DivSong& song) {
       subSong->chanName[channel].clear();
       subSong->chanShortName[channel].clear();
     }
+    delete[] converted;
   }
 
   song.systemName=engine->getSongSystemLegacyName(song,true);
   song.systemNameJ.clear();
-  logI("converted legacy VERA song to kri PSG (%d -> %d channels)",oldChannelCount,newChannelCount);
-  if (droppedChannelsWithData>0) {
-    logW(
-      "legacy VERA conversion discarded data from %d channel%s outside kri's eight PSG voices",
-      droppedChannelsWithData,
-      droppedChannelsWithData==1?"":"s"
+  for (DivSample* sample: song.sample) delete sample;
+  song.sample.clear();
+  song.sampleLen=0;
+  song.sampleDir.clear();
+  logI(
+    "polyphony-packed legacy VERA song for kri PSG (%d -> %d channels)",
+    oldChannelCount,
+    newChannelCount
+  );
+  if (totalCollisions>0) {
+    String warning=fmt::sprintf(
+      "kri conversion had to share physical voices between %d overlapping "
+      "vera line%s; less active musical lines may be interrupted",
+      totalCollisions,
+      totalCollisions==1?"":"s"
     );
+    logW("%s",warning);
   }
+  return totalCollisions;
+}
+
+static void normalizeKriHardware(DivSong& song) {
+  for (int system=0; system<song.systemLen; system++) {
+    if (song.system[system]==DIV_SYSTEM_YM2151) {
+      song.systemFlags[system].remove("customClock");
+      song.systemFlags[system].set("clockSel",0);
+    } else if (song.system[system]==DIV_SYSTEM_KRI_VERA) {
+      song.systemFlags[system].remove("customClock");
+      song.systemFlags[system].set("chipType",3);
+    }
+  }
+}
+
+static bool validateKriHardware(const DivSong& song) {
+  int opmCount=0;
+  int psgCount=0;
+  for (int system=0; system<song.systemLen; system++) {
+    if (song.system[system]==DIV_SYSTEM_YM2151) {
+      opmCount++;
+    } else if (song.system[system]==DIV_SYSTEM_KRI_VERA) {
+      psgCount++;
+    } else {
+      return false;
+    }
+  }
+  return opmCount<=1 && psgCount<=1;
 }
 #endif
 
@@ -2245,7 +2513,20 @@ bool DivEngine::loadFur(unsigned char* file, size_t len, int variantID) {
     }
 
 #ifdef FURNACE_KRI_ONLY
-    convertLegacyVERAToKri(this,ds);
+    int kriVoiceConflicts=convertLegacyVERAToKri(this,ds);
+    normalizeKriHardware(ds);
+    if (!validateKriHardware(ds)) {
+      lastError="a kri song may contain at most one opm and one kri psg";
+      return false;
+    }
+    if (kriVoiceConflicts>0) {
+      addWarning(fmt::sprintf(
+        "kri conversion had to share physical voices between %d overlapping "
+        "vera line%s; less active musical lines may be interrupted",
+        kriVoiceConflicts,
+        kriVoiceConflicts==1?"":"s"
+      ));
+    }
 #endif
 
     if (active) quitDispatch();

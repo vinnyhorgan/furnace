@@ -20,11 +20,13 @@
 #include "../export.h"
 
 #include <atomic>
+#include <mutex>
 #include <thread>
 
 class DivExportZSM: public DivROMExport {
   DivEngine* e;
   std::thread* exportThread=NULL;
+  std::mutex progressLock;
   DivROMExportProgress progress[2];
   std::atomic<bool> running{false};
   std::atomic<bool> failed{false};

@@ -943,6 +943,9 @@ void FurnaceGUI::drawSettings() {
 
         // SUBSECTION NEW SONG
         CONFIG_SUBSECTION(_("New Song"));
+#ifdef FURNACE_KRI_ONLY
+        ImGui::TextWrapped(_("new songs always start with kri's fixed opm and eight-voice psg."));
+#else
         ImGui::AlignTextToFramePadding();
         ImGui::Text(_("Initial system:"));
         ImGui::SameLine();
@@ -1151,9 +1154,13 @@ void FurnaceGUI::drawSettings() {
           settings.initialSys.set(fmt::sprintf("fr%d",sysCount),0.0f);
           settings.initialSys.set(fmt::sprintf("flags%d",sysCount),"");
         }
+#endif
 
         ImGui::Text(_("When creating new song:"));
         ImGui::Indent();
+#ifdef FURNACE_KRI_ONLY
+        ImGui::TextUnformatted(_("start with the kri hardware"));
+#else
         if (ImGui::RadioButton(_("Display system preset selector##NSB0"),settings.newSongBehavior==0)) {
           settings.newSongBehavior=0;
           settingsChanged=true;
@@ -1162,6 +1169,7 @@ void FurnaceGUI::drawSettings() {
           settings.newSongBehavior=1;
           settingsChanged=true;
         }
+#endif
         if (ImGui::InputText(_("Default author name"), &settings.defaultAuthorName)) settingsChanged=true;
         ImGui::Unindent();
 
@@ -1907,6 +1915,7 @@ void FurnaceGUI::drawSettings() {
           ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
           if (ImGui::Combo("##ArcadeCoreRender",&settings.arcadeCoreRender,arcadeCores,2)) settingsChanged=true;
 
+#ifndef FURNACE_KRI_ONLY
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
           ImGui::AlignTextToFramePadding();
@@ -2083,9 +2092,11 @@ void FurnaceGUI::drawSettings() {
           ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
           if (ImGui::Combo("##SwanCoreRender",&settings.swanCoreRender,swanCores,2)) settingsChanged=true;
 
+#endif
           ImGui::EndTable();
         }
 
+#ifndef FURNACE_KRI_ONLY
         // SUBSECTION OTHER
         CONFIG_SUBSECTION(_("Quality"));
         if (ImGui::BeginTable("##CoreQual",3)) {
@@ -2153,6 +2164,7 @@ void FurnaceGUI::drawSettings() {
           openFileDialog(GUI_FILE_MU5_ROM_OPEN);
         }
         */
+#endif
 
         END_SECTION;
       }
@@ -3585,6 +3597,7 @@ void FurnaceGUI::drawSettings() {
 
         // SUBSECTION ASSETS
         CONFIG_SUBSECTION(_("Assets"));
+#ifndef FURNACE_KRI_ONLY
         bool unifiedDataViewB=settings.unifiedDataView;
         if (ImGui::Checkbox(_("Unified instrument/wavetable/sample list"),&unifiedDataViewB)) {
           settings.unifiedDataView=unifiedDataViewB;
@@ -3595,12 +3608,22 @@ void FurnaceGUI::drawSettings() {
         }
 
         ImGui::BeginDisabled(settings.unifiedDataView);
+#endif
         bool horizontalDataViewB=settings.horizontalDataView;
-        if (ImGui::Checkbox(_("Horizontal instrument/wavetable list"),&horizontalDataViewB)) {
+        if (ImGui::Checkbox(
+#ifdef FURNACE_KRI_ONLY
+              _("Horizontal instrument list"),
+#else
+              _("Horizontal instrument/wavetable list"),
+#endif
+              &horizontalDataViewB
+            )) {
           settings.horizontalDataView=horizontalDataViewB;
           settingsChanged=true;
         }
+#ifndef FURNACE_KRI_ONLY
         ImGui::EndDisabled();
+#endif
 
         ImGui::Text(_("Instrument list icon style:"));
         ImGui::Indent();
@@ -4846,6 +4869,20 @@ void FurnaceGUI::readConfig(DivConfig& conf, FurnaceGUISettingGroups groups) {
         conf.set("configVersion",DIV_ENGINE_VERSION);
       }
     }
+#ifdef FURNACE_KRI_ONLY
+    settings.initialSys.clear();
+    settings.initialSys.set("id0",e->systemToFileFur(DIV_SYSTEM_KRI_VERA));
+    settings.initialSys.set("vol0",1.0f);
+    settings.initialSys.set("pan0",0.0f);
+    settings.initialSys.set("fr0",0.0f);
+    settings.initialSys.set("flags0","");
+    settings.initialSys.set("id1",e->systemToFileFur(DIV_SYSTEM_YM2151));
+    settings.initialSys.set("vol1",1.0f);
+    settings.initialSys.set("pan1",0.0f);
+    settings.initialSys.set("fr1",0.0f);
+    settings.initialSys.set("flags1","");
+    settings.initialSysName="kri";
+#endif
 
     settings.noThreadedInput=conf.getInt("noThreadedInput",0);
     settings.powerSave=conf.getInt("powerSave",POWER_SAVE_DEFAULT);
@@ -4903,6 +4940,9 @@ void FurnaceGUI::readConfig(DivConfig& conf, FurnaceGUISettingGroups groups) {
     settings.compress=conf.getInt("compress",1);
     settings.newPatternFormat=conf.getInt("newPatternFormat",1);
     settings.newSongBehavior=conf.getInt("newSongBehavior",0);
+#ifdef FURNACE_KRI_ONLY
+    settings.newSongBehavior=1;
+#endif
     settings.playOnLoad=conf.getInt("playOnLoad",0);
     settings.centerPopup=conf.getInt("centerPopup",1);
 
@@ -5138,6 +5178,9 @@ void FurnaceGUI::readConfig(DivConfig& conf, FurnaceGUISettingGroups groups) {
     settings.waveLayout=conf.getInt("waveLayout",0);
     settings.exportOptionsLayout=conf.getInt("exportOptionsLayout",1);
     settings.unifiedDataView=conf.getInt("unifiedDataView",0);
+#ifdef FURNACE_KRI_ONLY
+    settings.unifiedDataView=0;
+#endif
     settings.macroLayout=conf.getInt("macroLayout",0);
     settings.controlLayout=conf.getInt("controlLayout",3);
     settings.classicChipOptions=conf.getInt("classicChipOptions",0);

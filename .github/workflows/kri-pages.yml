@@ -20,6 +20,28 @@ env:
   EM_CACHE: ${{ github.workspace }}/.emscripten-cache
 
 jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: build headless kri
+        run: |
+          cmake -S . -B build/kri-runtime \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_GUI=OFF \
+            -DFURNACE_KRI_ONLY=ON \
+            -DWITH_JACK=OFF \
+            -DWITH_PORTAUDIO=OFF
+          cmake --build build/kri-runtime --target furnace --parallel 2
+
+      - name: test demo conversion and exports
+        run: python scripts/check-kri-runtime.py build/kri-runtime/furnace
+
   build:
     runs-on: ubuntu-24.04
 
@@ -37,6 +59,13 @@ jobs:
 
       - name: show compiler version
         run: emcc --version
+
+      - name: check kri contract
+        run: |
+          python scripts/check-kri-contract.py
+          node --check res/web/kri-pre.js
+          node --check res/web/coi-serviceworker.js
+          bash -n scripts/build-web-kri.sh
 
       - name: cache emscripten compiler
         uses: actions/cache@v4
@@ -73,7 +102,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
-    needs: build
+    needs:
+      - build
+      - runtime
 
     steps:
       - name: deploy to github pages

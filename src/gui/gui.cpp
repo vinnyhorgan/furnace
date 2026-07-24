@@ -24,6 +24,9 @@
 // define!!!!!!
 
 #include "gui.h"
+#if defined(__EMSCRIPTEN__) && defined(FURNACE_KRI_ONLY)
+#include "kriDemos.h"
+#endif
 #include "util.h"
 #include "../ta-log.h"
 #include "../fileutils.h"
@@ -4723,31 +4726,14 @@ bool FurnaceGUI::loop() {
       if (ImGui::BeginMenu("demos")) {
         ImGui::TextDisabled("click a demo to load and play");
         ImGui::Separator();
-        if (ImGui::BeginMenu("opm")) {
-          if (ImGui::MenuItem("Hope for the Dream")) playKriDemo("/kri-demos/demos/opm/hope_for_the_dream.fur");
-          if (ImGui::MenuItem("Lagrange Point")) playKriDemo("/kri-demos/demos/opm/lagrange_point_2023.fur");
-          if (ImGui::MenuItem("The King of C.R.I.S.P")) playKriDemo("/kri-demos/demos/opm/the_king_of_crisp.fur");
-          if (ImGui::MenuItem("Vortex")) playKriDemo("/kri-demos/demos/opm/vortex.fur");
-          if (ImGui::MenuItem("Waterworld - Map")) playKriDemo("/kri-demos/demos/opm/waterworld_map.fur");
-          if (ImGui::MenuItem("Salamander - Starfield")) playKriDemo("/kri-demos/demos/arcade/Salamander_Starfield.fur");
-          if (ImGui::MenuItem("WICKED EXPRESS")) playKriDemo("/kri-demos/demos/x68000/Wicked_Express.fur");
-          ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("vera → kri psg")) {
-          if (ImGui::MenuItem("Göte Går På Tivoli")) playKriDemo("/kri-demos/demos/x16/Cafe - 010 Editor 2.0kg.fur");
-          if (ImGui::MenuItem("Exerion II - Track 2")) playKriDemo("/kri-demos/demos/x16/Exerion_II_Tune.fur");
-          if (ImGui::MenuItem("Identity Believer")) playKriDemo("/kri-demos/demos/x16/Identity_Believer.fur");
-          if (ImGui::MenuItem("Melody of Certain Feelings")) playKriDemo("/kri-demos/demos/x16/Melody of Certain Feelings.fur");
-          if (ImGui::MenuItem("her 11")) playKriDemo("/kri-demos/demos/x16/her11.fur");
-          if (ImGui::MenuItem("Keygen 19")) playKriDemo("/kri-demos/demos/x16/keygen19.fur");
-          if (ImGui::MenuItem("Watching Paint Dry")) playKriDemo("/kri-demos/demos/x16/watching_paint_dry.fur");
-          ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("opm + vera → kri")) {
-          if (ImGui::MenuItem("Shades of Blue")) playKriDemo("/kri-demos/demos/x16/Shades of Blue.fur");
-          if (ImGui::MenuItem("Rising Blue Lightning")) playKriDemo("/kri-demos/demos/x16/TFV_Rise.fur");
-          if (ImGui::MenuItem("Dance with me")) playKriDemo("/kri-demos/demos/x16/dance with me.fur");
-          if (ImGui::MenuItem("Getting Richer")) playKriDemo("/kri-demos/demos/x16/richca.fur");
+        const char* groups[]={"opm","psg","opm + psg"};
+        for (const char* group: groups) {
+          if (!ImGui::BeginMenu(group)) continue;
+          for (const KriDemoEntry& demo: kriDemos) {
+            if (strcmp(demo.group,group)==0 && ImGui::MenuItem(demo.name)) {
+              playKriDemo(demo.path);
+            }
+          }
           ImGui::EndMenu();
         }
         ImGui::EndMenu();

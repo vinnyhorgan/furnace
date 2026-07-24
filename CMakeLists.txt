@@ -1312,30 +1312,41 @@ target_link_libraries(${FURNACE} PRIVATE ${DEPENDENCIES_LIBRARIES})
 if (EMSCRIPTEN)
   set(FURNACE_WEB_PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-pre.js")
   set(FURNACE_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-shell.html")
-  set(FURNACE_KRI_WEB_DEMOS
-    "demos/opm/hope_for_the_dream.fur"
-    "demos/opm/lagrange_point_2023.fur"
-    "demos/opm/the_king_of_crisp.fur"
-    "demos/opm/vortex.fur"
-    "demos/opm/waterworld_map.fur"
-    "demos/arcade/Salamander_Starfield.fur"
-    "demos/x68000/Wicked_Express.fur"
-    "demos/x16/Cafe - 010 Editor 2.0kg.fur"
-    "demos/x16/Exerion_II_Tune.fur"
-    "demos/x16/Identity_Believer.fur"
-    "demos/x16/Melody of Certain Feelings.fur"
-    "demos/x16/Shades of Blue.fur"
-    "demos/x16/TFV_Rise.fur"
-    "demos/x16/dance with me.fur"
-    "demos/x16/her11.fur"
-    "demos/x16/keygen19.fur"
-    "demos/x16/richca.fur"
-    "demos/x16/watching_paint_dry.fur"
+  file(
+    STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/res/kri-demos.txt"
+    FURNACE_KRI_WEB_DEMO_ENTRIES
+    ENCODING UTF-8
   )
+  set(FURNACE_KRI_WEB_DEMOS)
+  set(FURNACE_KRI_DEMO_CPP_ENTRIES "")
+  foreach(demo_entry IN LISTS FURNACE_KRI_WEB_DEMO_ENTRIES)
+    string(REPLACE "|" ";" demo_fields "${demo_entry}")
+    list(LENGTH demo_fields demo_field_count)
+    if (NOT demo_field_count EQUAL 3)
+      message(FATAL_ERROR "invalid kri demo manifest entry: ${demo_entry}")
+    endif()
+    list(GET demo_fields 0 demo_group)
+    list(GET demo_fields 1 demo_name)
+    list(GET demo_fields 2 demo)
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${demo}")
+      message(FATAL_ERROR "kri demo does not exist: ${demo}")
+    endif()
+    list(APPEND FURNACE_KRI_WEB_DEMOS "${demo}")
+    string(APPEND FURNACE_KRI_DEMO_CPP_ENTRIES
+      "  {\"${demo_group}\",\"${demo_name}\",\"/kri-demos/${demo}\"},\n"
+    )
+  endforeach()
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/res/kriDemos.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/kriDemos.h"
+    @ONLY
+  )
+  target_include_directories(${FURNACE} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
   set_target_properties(${FURNACE} PROPERTIES SUFFIX ".html")
   set_property(TARGET ${FURNACE} APPEND PROPERTY LINK_DEPENDS
     "${FURNACE_WEB_PRE_JS}"
     "${FURNACE_WEB_SHELL}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/res/kri-demos.txt"
   )
   target_link_options(${FURNACE} PRIVATE
     "-pthread"

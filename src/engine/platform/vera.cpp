@@ -576,9 +576,14 @@ void DivPlatformVERA::poke(std::vector<DivRegWrite>& wlist) {
 }
 
 void DivPlatformVERA::setFlags(const DivConfig& flags) {
+#ifdef FURNACE_KRI_ONLY
+  psg->chipType=3;
+  chipClock=25000000;
+#else
   psg->chipType=flags.getInt("chipType",3);
   chipClock=25000000;
   CHECK_CUSTOM_CLOCK;
+#endif
   rate=chipClock/512;
   for (int i=0; i<totalChannels; i++) {
     oscBuf[i]->setRate(rate);

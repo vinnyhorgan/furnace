@@ -18,12 +18,58 @@ if (typeof window === 'undefined') {
       });
     }));
   });
-} else if ('serviceWorker' in navigator && !window.crossOriginIsolated) {
-  navigator.serviceWorker.register('./coi-serviceworker.js').then(() => {
-    if (!navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-    } else {
-      location.reload();
+} else if ('serviceWorker' in navigator) {
+  const reloadKey = 'kri-coi-reload';
+  const reloadParam = 'kri-coi';
+  if (window.crossOriginIsolated) {
+    sessionStorage.removeItem(reloadKey);
+    const cleanUrl = new URL(location.href);
+    if (cleanUrl.searchParams.has(reloadParam)) {
+      cleanUrl.searchParams.delete(reloadParam);
+      history.replaceState(null, '', cleanUrl);
     }
-  });
+  } else {
+    let reloading = false;
+    const reloadWithWorker = (attempt) => {
+      if (reloading) return;
+      reloading = true;
+      const reloadUrl = new URL(location.href);
+      reloadUrl.searchParams.set(reloadParam, String(attempt));
+      location.replace(reloadUrl);
+    };
+    const retryWithWorker = () => {
+      const attempts = Number.parseInt(sessionStorage.getItem(reloadKey) || '0', 10);
+      if (attempts >= 3) {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.textContent = 'kri needs one click to finish loading';
+          loading.style.cursor = 'pointer';
+          loading.onclick = () => {
+            sessionStorage.removeItem(reloadKey);
+            reloadWithWorker(1);
+          };
+        }
+        return;
+      }
+      const nextAttempt = attempts + 1;
+      sessionStorage.setItem(reloadKey, String(nextAttempt));
+      reloadWithWorker(nextAttempt);
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', retryWithWorker, { once: true });
+    if (navigator.serviceWorker.controller) retryWithWorker();
+    setTimeout(() => {
+      if (!window.crossOriginIsolated) retryWithWorker();
+    }, 500);
+    navigator.serviceWorker.register('./coi-serviceworker.js')
+      .then((registration) => {
+        // A hard refresh may bypass an already-active worker for this
+        // navigation. There is then no controllerchange event to await.
+        if (registration.active || navigator.serviceWorker.controller) {
+          retryWithWorker();
+        } else {
+          navigator.serviceWorker.ready.then(retryWithWorker);
+        }
+      })
+      .catch((error) => console.error('could not start kri service worker:', error));
+  }
 }

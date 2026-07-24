@@ -87,6 +87,10 @@ Module.preRun.push(() => {
       });
     };
     Module.furnaceSyncTimer = window.setInterval(Module.kriSyncStorage, 5000);
+    window.addEventListener('pagehide', Module.kriSyncStorage);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') Module.kriSyncStorage();
+    });
     removeRunDependency('kri-idbfs');
   });
 });

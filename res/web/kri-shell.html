@@ -62,6 +62,16 @@
       }
     };
   </script>
-  {{{ SCRIPT }}}
+  <!-- Keep Emscripten's required script placeholder inert. The real script is
+       loaded below only after the service worker has isolated this page. -->
+  <template id="emscripten-script">{{{ SCRIPT }}}</template>
+  <script>
+    if (window.crossOriginIsolated || !('serviceWorker' in navigator)) {
+      const furnaceScript = document.createElement('script');
+      furnaceScript.src = 'furnace.js';
+      furnaceScript.async = true;
+      document.body.appendChild(furnaceScript);
+    }
+  </script>
 </body>
 </html>

@@ -640,9 +640,12 @@ void DivExportZSM::run() {
         break;
       }
       if (e->curSubSong->ordersLen>0 && e->curSubSong->patLen>0) {
-        progress[0].amount=MIN(0.99f,
+        std::lock_guard<std::mutex> lock(progressLock);
+        progress[0].amount=MIN(
+          0.99f,
           ((float)e->curOrder+((float)e->curRow/(float)e->curSubSong->patLen))/
-          (float)e->curSubSong->ordersLen);
+            (float)e->curSubSong->ordersLen
+        );
       }
       if (loopPos==-1) {
         if (loopOrder==e->curOrder && loopRow==e->curRow && loop)
@@ -731,7 +734,10 @@ void DivExportZSM::run() {
     return;
   }
 
-  progress[0].amount=1.0f;
+  {
+    std::lock_guard<std::mutex> lock(progressLock);
+    progress[0].amount=1.0f;
+  }
 
   logAppend("finished!");
 
@@ -742,8 +748,11 @@ void DivExportZSM::run() {
 /// DivExpottZSM - FRONTEND
 
 bool DivExportZSM::go(DivEngine* eng) {
-  progress[0].name="Generate";
-  progress[0].amount=0.0f;
+  {
+    std::lock_guard<std::mutex> lock(progressLock);
+    progress[0].name="Generate";
+    progress[0].amount=0.0f;
+  }
 
   e=eng;
   running=true;
@@ -775,6 +784,7 @@ bool DivExportZSM::hasFailed() {
 }
 
 DivROMExportProgress DivExportZSM::getProgress(int index) {
+  std::lock_guard<std::mutex> lock(progressLock);
   if (index<0 || index>1) return progress[1];
   return progress[index];
 }
