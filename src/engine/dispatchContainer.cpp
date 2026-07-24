@@ -19,7 +19,7 @@
 
 #include "blip_buf.h"
 #include "engine.h"
-#ifdef FURNACE_X16_ONLY
+#ifdef FURNACE_KRI_ONLY
 #include "platform/arcade.h"
 #include "platform/vera.h"
 #include "platform/dummy.h"
@@ -238,7 +238,7 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
   if (dispatch!=NULL) return;
 
   // initialize chip
-#ifdef FURNACE_X16_ONLY
+#ifdef FURNACE_KRI_ONLY
   switch (sys) {
     case DIV_SYSTEM_YM2151:
       dispatch=new DivPlatformArcade;
@@ -252,7 +252,7 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       dispatch=new DivPlatformVERA;
       break;
     default:
-      logW("this system is not available in the Commander X16 edition; using dummy platform.");
+      logW("this system is not available in the kri edition; using dummy platform.");
       dispatch=new DivPlatformDummy;
       break;
   }

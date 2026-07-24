@@ -52,10 +52,10 @@ void FurnaceGUI::initSystemPresets() {
 
   FurnaceGUISysCategory cat;
 
-#ifdef FURNACE_X16_ONLY
-  CATEGORY_BEGIN(_("Commander X16"),_("YM2151 FM synthesis and VERA PSG/PCM"));
+#ifdef FURNACE_KRI_ONLY
+  CATEGORY_BEGIN(_("kri"),_("yamaha ym2151 and vera audio"));
   ENTRY(
-    _("Commander X16"), {
+    _("kri"), {
       CH(DIV_SYSTEM_VERA, 1.0f, 0, ""),
       CH(DIV_SYSTEM_YM2151, 1.0f, 0, "")
     }

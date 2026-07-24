@@ -6971,7 +6971,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     }
 
     // four fallback fonts
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
     if (settings.loadJapanese ||
         settings.loadChinese ||
         settings.loadChineseTraditional ||
@@ -7039,7 +7039,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     }
 
     // four fallback fonts
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
     if (settings.loadFallbackPat && (settings.loadJapanese ||
         settings.loadChinese ||
         settings.loadChineseTraditional ||
@@ -7085,7 +7085,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     if ((bigFont=addFontZlib(font_plexSans_compressed_data,font_plexSans_compressed_size,MAX(1,40*dpiScale),&fontConfB,fontRangeB))==NULL) {
       logE("could not load big UI font!");
     }
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
     fontConfB.MergeMode=true;
     if ((bigFont=addFontZlib(font_plexSansJP_compressed_data,font_plexSansJP_compressed_size,MAX(1,40*dpiScale),&fontConfB,fontRangeB))==NULL) {
       logE("could not load big UI font (japanese)!");

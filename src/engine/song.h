@@ -491,7 +491,7 @@ struct DivSong {
       systemPanFR[i]=0.0;
     }
     subsong.push_back(new DivSubSong);
-#ifdef FURNACE_X16_ONLY
+#ifdef FURNACE_KRI_ONLY
     system[0]=DIV_SYSTEM_VERA;
     system[1]=DIV_SYSTEM_YM2151;
 #else

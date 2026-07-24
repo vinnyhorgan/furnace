@@ -1,9 +1,9 @@
-name: Build and deploy Commander X16 web edition
+name: build and deploy kri
 
 on:
   push:
     branches:
-      - x16-web
+      - kri
   workflow_dispatch:
 
 permissions:
@@ -24,46 +24,46 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Check out source
+      - name: check out source
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Set up Emscripten
+      - name: set up emscripten
         uses: emscripten-core/setup-emsdk@v16
         with:
           version: ${{ env.EM_VERSION }}
           actions-cache-folder: emsdk-cache
 
-      - name: Show compiler version
+      - name: show compiler version
         run: emcc --version
 
-      - name: Cache compiler and build outputs
+      - name: cache compiler and build outputs
         uses: actions/cache@v4
         with:
           path: |
             .emscripten-cache
-            build/web-x16
-          key: x16-web-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-x16.sh') }}-${{ github.sha }}
+            build/web-kri
+          key: kri-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-kri.sh') }}-${{ github.sha }}
           restore-keys: |
-            x16-web-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-x16.sh') }}-
-            x16-web-${{ env.EM_VERSION }}-${{ runner.os }}-
+            kri-${{ env.EM_VERSION }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'scripts/build-web-kri.sh') }}-
+            kri-${{ env.EM_VERSION }}-${{ runner.os }}-
 
-      - name: Build web edition
-        run: ./scripts/build-web-x16.sh
+      - name: build web edition
+        run: ./scripts/build-web-kri.sh
 
-      - name: Prepare site
+      - name: prepare site
         run: |
           mkdir --parents _site
-          install --mode=0644 build/web-x16/furnace.html _site/index.html
-          install --mode=0644 build/web-x16/furnace.js _site/furnace.js
-          install --mode=0644 build/web-x16/furnace.wasm _site/furnace.wasm
+          install --mode=0644 build/web-kri/furnace.html _site/index.html
+          install --mode=0644 build/web-kri/furnace.js _site/furnace.js
+          install --mode=0644 build/web-kri/furnace.wasm _site/furnace.wasm
           touch _site/.nojekyll
 
-      - name: Configure GitHub Pages
+      - name: configure github pages
         uses: actions/configure-pages@v5
 
-      - name: Upload GitHub Pages artifact
+      - name: upload github pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
@@ -76,6 +76,6 @@ jobs:
     needs: build
 
     steps:
-      - name: Deploy to GitHub Pages
+      - name: deploy to github pages
         id: deployment
         uses: actions/deploy-pages@v4

@@ -2342,9 +2342,9 @@ void DivEngine::registerSystems() {
     {DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD}
   );
 
-#ifdef FURNACE_X16_ONLY
+#ifdef FURNACE_KRI_ONLY
   // Keep the serialized system IDs stable, but expose only the two chips
-  // present in the Commander X16. Unsupported .fur files then fail cleanly
+  // present in kri. unsupported .fur files then fail cleanly
   // during system-ID lookup instead of instantiating an unavailable backend.
   for (int i=0; i<DIV_MAX_CHIP_DEFS; i++) {
     if (i==DIV_SYSTEM_YM2151 || i==DIV_SYSTEM_VERA) continue;

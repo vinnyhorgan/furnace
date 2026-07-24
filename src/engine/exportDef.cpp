@@ -73,7 +73,7 @@ bool DivEngine::isROMExportViable(DivROMExportOptions opt)
 void DivEngine::registerROMExports() {
   logD("registering ROM exports...");
 
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
   romExportDefs[DIV_ROM_AMIGA_VALIDATION]=new DivROMExportDef(
     "Amiga Validation", "tildearrow",
     "a test export for ensuring Amiga emulation is accurate. do not use!",
@@ -97,7 +97,7 @@ void DivEngine::registerROMExports() {
     false, DIV_REQPOL_LAX
   );
 
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
   romExportDefs[DIV_ROM_TIUNA]=new DivROMExportDef(
     "Atari 2600 (TIunA)", "Natt Akuma",
     "advanced driver with software tuning support.\n"

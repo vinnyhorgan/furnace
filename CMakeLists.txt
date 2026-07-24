@@ -140,10 +140,10 @@ option(CONSOLE_SUBSYSTEM "Build Furnace with Console subsystem on Windows" OFF)
 option(FORCE_CODEVIEW "Force -gcodeview on MinGW GCC" OFF)
 option(FLATPAK_WORKAROUNDS "Enable Flatpak-specific workaround for system file picker" OFF)
 option(NO_INTRO "Disable intro animation entirely" OFF)
-option(FURNACE_X16_ONLY "Build a Commander X16-only edition (YM2151 + VERA)" OFF)
+option(FURNACE_KRI_ONLY "build the kri edition (ym2151 + vera)" OFF)
 
 if (EMSCRIPTEN)
-  set(FURNACE_X16_ONLY ON CACHE BOOL "Build a Commander X16-only edition (YM2151 + VERA)" FORCE)
+  set(FURNACE_KRI_ONLY ON CACHE BOOL "build the kri edition (ym2151 + vera)" FORCE)
   set(BUILD_GUI ON CACHE BOOL "Build the tracker" FORCE)
   set(USE_SDL2 ON CACHE BOOL "Build with SDL2" FORCE)
   set(SYSTEM_SDL2 OFF CACHE BOOL "Use vendored SDL2" FORCE)
@@ -177,9 +177,9 @@ else()
   set(DEPENDENCIES_DEFINES "")
 endif()
 
-if (FURNACE_X16_ONLY)
-  list(APPEND DEPENDENCIES_DEFINES "FURNACE_X16_ONLY")
-  message(STATUS "Building Commander X16-only edition")
+if (FURNACE_KRI_ONLY)
+  list(APPEND DEPENDENCIES_DEFINES "FURNACE_KRI_ONLY")
+  message(STATUS "building kri edition")
 endif()
 
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
@@ -852,7 +852,7 @@ src/engine/effect/abstract.cpp
 src/engine/effect/dummy.cpp
 )
 
-if (FURNACE_X16_ONLY)
+if (FURNACE_KRI_ONLY)
   foreach(source ${ENGINE_SOURCES})
     if (source MATCHES "^src/engine/platform/" OR
         source MATCHES "^extern/(SAASound|vgsound_emu-modified)/")
@@ -992,7 +992,7 @@ src/gui/xyOsc.cpp
 src/gui/gui.cpp
 )
 
-if (FURNACE_X16_ONLY)
+if (FURNACE_KRI_ONLY)
   list(REMOVE_ITEM GUI_SOURCES
     src/gui/font_plexSansJP.cpp
     src/gui/font_plexSansKR.cpp
@@ -1309,8 +1309,8 @@ target_include_directories(${FURNACE} SYSTEM PRIVATE ${DEPENDENCIES_INCLUDE_DIRS
 target_compile_options(${FURNACE} PRIVATE ${DEPENDENCIES_COMPILE_OPTIONS})
 target_link_libraries(${FURNACE} PRIVATE ${DEPENDENCIES_LIBRARIES})
 if (EMSCRIPTEN)
-  set(FURNACE_WEB_PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/res/web/x16-pre.js")
-  set(FURNACE_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/res/web/x16-shell.html")
+  set(FURNACE_WEB_PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-pre.js")
+  set(FURNACE_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-shell.html")
   set_target_properties(${FURNACE} PROPERTIES SUFFIX ".html")
   set_property(TARGET ${FURNACE} APPEND PROPERTY LINK_DEPENDS
     "${FURNACE_WEB_PRE_JS}"

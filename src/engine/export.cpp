@@ -20,7 +20,7 @@
 #include "engine.h"
 
 #include "export/zsm.h"
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
 #include "export/amigaValidation.h"
 #include "export/sapr.h"
 #include "export/tiuna.h"
@@ -29,7 +29,7 @@
 DivROMExport* DivEngine::buildROM(DivROMExportOptions sys) {
   DivROMExport* exporter=NULL;
   switch (sys) {
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
     case DIV_ROM_AMIGA_VALIDATION:
       exporter=new DivExportAmigaValidation;
       break;
@@ -40,7 +40,7 @@ DivROMExport* DivEngine::buildROM(DivROMExportOptions sys) {
     case DIV_ROM_ZSM:
       exporter=new DivExportZSM;
       break;
-#ifndef FURNACE_X16_ONLY
+#ifndef FURNACE_KRI_ONLY
     case DIV_ROM_SAP_R:
       exporter=new DivExportSAPR;
       break;
