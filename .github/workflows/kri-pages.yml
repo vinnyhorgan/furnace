@@ -37,6 +37,9 @@ jobs:
             -DFURNACE_KRI_ONLY=ON \
             -DUSE_RTMIDI=OFF \
             -DUSE_SDL2=OFF \
+            -DWITH_RENDER_SDL=OFF \
+            -DWITH_RENDER_OPENGL=OFF \
+            -DWITH_RENDER_OPENGL1=OFF \
             -DWITH_JACK=OFF \
             -DWITH_PORTAUDIO=OFF
           cmake --build build/kri-runtime --target furnace --parallel 2
