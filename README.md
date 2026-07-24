@@ -1,5 +1,14 @@
 # Furnace (chiptune tracker)
 
+> **Commander X16 web edition**
+>
+> This fork targets only the Commander X16 sound hardware: VERA plus the
+> YM2151 (OPM). [Launch the web tracker](https://vinnyhorgan.github.io/furnace/)
+> or read the [web build documentation](doc/WEB_X16.md).
+>
+> The upstream README below describes the full multi-system edition of
+> Furnace. This fork intentionally exposes only the X16 configuration.
+
 ![screenshot](papers/screenshot3.png)
 
 the biggest multi-system chiptune tracker ever made!

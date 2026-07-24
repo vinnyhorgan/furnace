@@ -3,6 +3,9 @@
 This edition keeps Furnace's tracker UI and song format, but exposes only the
 Commander X16 sound configuration: YM2151 (OPM) plus VERA.
 
+The latest `x16-web` commit is deployed automatically at
+<https://vinnyhorgan.github.io/furnace/>.
+
 ## Build
 
 Install Emscripten and run:
