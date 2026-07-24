@@ -2517,6 +2517,27 @@ void FurnaceGUI::openRecentFile(String path) {
   }
 }
 
+void FurnaceGUI::loadPendingFile() {
+  String path=nextFile;
+  nextFile="";
+  bool playDemo=path.find("/kri-demos/")==0;
+  if (load(path)>0) {
+    showError(fmt::sprintf(_("Error while loading file! (%s)"),lastError));
+  } else if (playDemo) {
+    e->setOrder(0);
+    play();
+  }
+}
+
+void FurnaceGUI::playKriDemo(const char* path) {
+  nextFile=path;
+  if (modified) {
+    showWarning(_("Unsaved changes! Save changes before opening file?"),GUI_WARN_OPEN_DROP);
+  } else {
+    loadPendingFile();
+  }
+}
+
 void FurnaceGUI::pushRecentFile(String path) {
   if (path.empty()) return;
   if (path.find(backupPath)==0) return;
@@ -4673,6 +4694,40 @@ bool FurnaceGUI::loop() {
       } else {
         exitDisabledTimer=0;
       }
+#if defined(__EMSCRIPTEN__) && defined(FURNACE_KRI_ONLY)
+      if (ImGui::BeginMenu("demos")) {
+        ImGui::TextDisabled("click a demo to load and play");
+        ImGui::Separator();
+        if (ImGui::BeginMenu("opm")) {
+          if (ImGui::MenuItem("Hope for the Dream")) playKriDemo("/kri-demos/demos/opm/hope_for_the_dream.fur");
+          if (ImGui::MenuItem("Lagrange Point")) playKriDemo("/kri-demos/demos/opm/lagrange_point_2023.fur");
+          if (ImGui::MenuItem("The King of C.R.I.S.P")) playKriDemo("/kri-demos/demos/opm/the_king_of_crisp.fur");
+          if (ImGui::MenuItem("Vortex")) playKriDemo("/kri-demos/demos/opm/vortex.fur");
+          if (ImGui::MenuItem("Waterworld - Map")) playKriDemo("/kri-demos/demos/opm/waterworld_map.fur");
+          if (ImGui::MenuItem("Salamander - Starfield")) playKriDemo("/kri-demos/demos/arcade/Salamander_Starfield.fur");
+          if (ImGui::MenuItem("WICKED EXPRESS")) playKriDemo("/kri-demos/demos/x68000/Wicked_Express.fur");
+          ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("vera")) {
+          if (ImGui::MenuItem("Göte Går På Tivoli")) playKriDemo("/kri-demos/demos/x16/Cafe - 010 Editor 2.0kg.fur");
+          if (ImGui::MenuItem("Exerion II - Track 2")) playKriDemo("/kri-demos/demos/x16/Exerion_II_Tune.fur");
+          if (ImGui::MenuItem("Identity Believer")) playKriDemo("/kri-demos/demos/x16/Identity_Believer.fur");
+          if (ImGui::MenuItem("Melody of Certain Feelings")) playKriDemo("/kri-demos/demos/x16/Melody of Certain Feelings.fur");
+          if (ImGui::MenuItem("her 11")) playKriDemo("/kri-demos/demos/x16/her11.fur");
+          if (ImGui::MenuItem("Keygen 19")) playKriDemo("/kri-demos/demos/x16/keygen19.fur");
+          if (ImGui::MenuItem("Watching Paint Dry")) playKriDemo("/kri-demos/demos/x16/watching_paint_dry.fur");
+          ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("opm + vera")) {
+          if (ImGui::MenuItem("Shades of Blue")) playKriDemo("/kri-demos/demos/x16/Shades of Blue.fur");
+          if (ImGui::MenuItem("Rising Blue Lightning")) playKriDemo("/kri-demos/demos/x16/TFV_Rise.fur");
+          if (ImGui::MenuItem("Dance with me")) playKriDemo("/kri-demos/demos/x16/dance with me.fur");
+          if (ImGui::MenuItem("Getting Richer")) playKriDemo("/kri-demos/demos/x16/richca.fur");
+          ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
+      }
+#endif
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Edit"):_("edit"))) {
         ImGui::Text("...");
         ImGui::Separator();
@@ -5291,10 +5346,7 @@ bool FurnaceGUI::loop() {
                     openOpen=true;
                     break;
                   case GUI_WARN_OPEN_DROP:
-                    if (load(nextFile)>0) {
-                      showError(fmt::sprintf(_("Error while loading file! (%s)"),lastError));
-                    }
-                    nextFile="";
+                    loadPendingFile();
                     break;
                   case GUI_WARN_OPEN_BACKUP:
                     openFileDialog(GUI_FILE_OPEN_BACKUP);
@@ -6284,20 +6336,14 @@ bool FurnaceGUI::loop() {
                 showError(fmt::sprintf(_("Error while saving file! (%s)"),lastError));
                 nextFile="";
               } else {
-                if (load(nextFile)>0) {
-                  showError(fmt::sprintf(_("Error while loading file! (%s)"),lastError));
-                }
-                nextFile="";
+                loadPendingFile();
               }
             }
           }
           ImGui::SameLine();
           if (ImGui::Button(_("No"))) {
             ImGui::CloseCurrentPopup();
-            if (load(nextFile)>0) {
-              showError(fmt::sprintf(_("Error while loading file! (%s)"),lastError));
-            }
-            nextFile="";
+            loadPendingFile();
           }
           ImGui::SameLine();
           if (ImGui::Button(_("Cancel")) || ImGui::IsKeyPressed(ImGuiKey_Escape)) {

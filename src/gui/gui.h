@@ -3037,6 +3037,8 @@ class FurnaceGUI {
   int save(String path, int dmfVersion);
   int load(String path);
   int loadStream(String path);
+  void loadPendingFile();
+  void playKriDemo(const char* path);
   void openRecentFile(String path);
   void pushRecentFile(String path);
   void pushRecentSys(const char* path);

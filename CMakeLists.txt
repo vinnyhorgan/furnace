@@ -1311,6 +1311,26 @@ target_link_libraries(${FURNACE} PRIVATE ${DEPENDENCIES_LIBRARIES})
 if (EMSCRIPTEN)
   set(FURNACE_WEB_PRE_JS "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-pre.js")
   set(FURNACE_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/res/web/kri-shell.html")
+  set(FURNACE_KRI_WEB_DEMOS
+    "demos/opm/hope_for_the_dream.fur"
+    "demos/opm/lagrange_point_2023.fur"
+    "demos/opm/the_king_of_crisp.fur"
+    "demos/opm/vortex.fur"
+    "demos/opm/waterworld_map.fur"
+    "demos/arcade/Salamander_Starfield.fur"
+    "demos/x68000/Wicked_Express.fur"
+    "demos/x16/Cafe - 010 Editor 2.0kg.fur"
+    "demos/x16/Exerion_II_Tune.fur"
+    "demos/x16/Identity_Believer.fur"
+    "demos/x16/Melody of Certain Feelings.fur"
+    "demos/x16/Shades of Blue.fur"
+    "demos/x16/TFV_Rise.fur"
+    "demos/x16/dance with me.fur"
+    "demos/x16/her11.fur"
+    "demos/x16/keygen19.fur"
+    "demos/x16/richca.fur"
+    "demos/x16/watching_paint_dry.fur"
+  )
   set_target_properties(${FURNACE} PROPERTIES SUFFIX ".html")
   set_property(TARGET ${FURNACE} APPEND PROPERTY LINK_DEPENDS
     "${FURNACE_WEB_PRE_JS}"
@@ -1326,6 +1346,15 @@ if (EMSCRIPTEN)
     "--pre-js=${FURNACE_WEB_PRE_JS}"
     "--shell-file=${FURNACE_WEB_SHELL}"
   )
+  foreach(demo IN LISTS FURNACE_KRI_WEB_DEMOS)
+    set(demo_source "${CMAKE_CURRENT_SOURCE_DIR}/${demo}")
+    set_property(TARGET ${FURNACE} APPEND PROPERTY LINK_DEPENDS
+      "${demo_source}"
+    )
+    target_link_options(${FURNACE} PRIVATE
+      "--embed-file=${demo_source}@/kri-demos/${demo}"
+    )
+  endforeach()
 endif()
 if (PKG_CONFIG_FOUND AND (SYSTEM_FMT OR SYSTEM_LIBSNDFILE OR SYSTEM_ZLIB OR SYSTEM_SDL2 OR SYSTEM_RTMIDI OR WITH_JACK))
   if ("${CMAKE_VERSION}" VERSION_LESS "3.13")
