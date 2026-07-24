@@ -19,6 +19,14 @@ Module.preRun.push(() => {
       } else {
         const updatedLayout = layout
           .replace(
+            'ID=0x00000005 Parent=0x00000008 SizeRef=304,406',
+            'ID=0x00000005 Parent=0x00000008 SizeRef=279,406'
+          )
+          .replace(
+            'ID=0x00000006 Parent=0x00000008 SizeRef=323,406',
+            'ID=0x00000006 Parent=0x00000008 SizeRef=348,406'
+          )
+          .replace(
             'ID=0x0000000D Parent=0x00000009 SizeRef=292,68',
             'ID=0x0000000D Parent=0x00000009 SizeRef=292,88'
           )
