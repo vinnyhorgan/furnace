@@ -35,6 +35,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_GUI=OFF \
             -DFURNACE_KRI_ONLY=ON \
+            -DUSE_RTMIDI=OFF \
+            -DUSE_SDL2=OFF \
             -DWITH_JACK=OFF \
             -DWITH_PORTAUDIO=OFF
           cmake --build build/kri-runtime --target furnace --parallel 2
