@@ -6,11 +6,24 @@ Module.preRun.push(() => {
   addRunDependency('kri-idbfs');
   FS.syncfs(true, (error) => {
     if (error) console.error('could not load kri browser storage:', error);
-    Module.furnaceSyncTimer = window.setInterval(() => {
+    let syncInFlight = false;
+    let syncQueued = false;
+    Module.kriSyncStorage = () => {
+      if (syncInFlight) {
+        syncQueued = true;
+        return;
+      }
+      syncInFlight = true;
       FS.syncfs(false, (syncError) => {
+        syncInFlight = false;
         if (syncError) console.error('could not save kri browser storage:', syncError);
+        if (syncQueued) {
+          syncQueued = false;
+          Module.kriSyncStorage();
+        }
       });
-    }, 5000);
+    };
+    Module.furnaceSyncTimer = window.setInterval(Module.kriSyncStorage, 5000);
     removeRunDependency('kri-idbfs');
   });
 });

@@ -24,6 +24,10 @@
 
 #include "gif_load.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include "../utfutils.h"
@@ -877,6 +881,12 @@ void FurnaceGUI::drawTutorial() {
     if (ImGui::Button(_("OK"))) {
       tutorial.protoWelcome=true;
       commitTutorial();
+      e->saveConf();
+#ifdef __EMSCRIPTEN__
+      EM_ASM({
+        if (Module.kriSyncStorage) Module.kriSyncStorage();
+      });
+#endif
       ImGui::CloseCurrentPopup();
     }
 

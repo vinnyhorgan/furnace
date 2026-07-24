@@ -241,7 +241,13 @@ double getScaleFactor(const char* driverHint, void* windowHint) {
 #else
   float dpiScaleF=96.0f;
   if (SDL_GetDisplayDPI(0,&dpiScaleF,NULL,NULL)==0) {
+#ifdef __EMSCRIPTEN__
+    // Browser zoom and OS scaling commonly produce fractional device pixel
+    // ratios. Rounding 1.5 to 2 makes the UI much larger than its CSS size.
+    ret=dpiScaleF/96.0f;
+#else
     ret=round(dpiScaleF/96.0f);
+#endif
     if (ret<1) ret=1;
   }
 #endif

@@ -338,9 +338,8 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
             float wheel_x = -(float)event->wheel.x;
             float wheel_y = (float)event->wheel.y;
 #endif
-#ifdef __EMSCRIPTEN__
-            wheel_x /= 100.0f;
-#endif
+            // Vendored SDL's Emscripten backend already converts DOM pixel
+            // deltas to wheel steps, so preciseX must not be scaled again.
 #ifdef __APPLE__
             wheel_x = -wheel_x;
 #endif
