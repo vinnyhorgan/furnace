@@ -1118,7 +1118,7 @@ Collapsed=0\n\
 \n\
 [Docking][Data]\n\
 DockSpace             ID=0x8B93E3BD Window=0xA787BDB4 Pos=0,24 Size=1280,776 Split=Y Selected=0x6C01C512\n\
-  DockNode            ID=0x00000001 Parent=0x8B93E3BD SizeRef=1280,217 Split=X Selected=0xF3094A52\n\
+  DockNode            ID=0x00000001 Parent=0x8B93E3BD SizeRef=1280,286 Split=X Selected=0xF3094A52\n\
     DockNode          ID=0x00000003 Parent=0x00000001 SizeRef=976,231 Split=X Selected=0x65CC51DC\n\
       DockNode        ID=0x00000007 Parent=0x00000003 SizeRef=345,231 HiddenTabBar=1 Selected=0x8F5BFC9A\n\
       DockNode        ID=0x00000008 Parent=0x00000003 SizeRef=629,231 Split=X Selected=0xD2AD486B\n\
@@ -1131,13 +1131,13 @@ DockSpace             ID=0x8B93E3BD Window=0xA787BDB4 Pos=0,24 Size=1280,776 Spl
     DockNode          ID=0x00000004 Parent=0x00000001 SizeRef=302,231 Split=Y Selected=0x60B9D088\n\
       DockNode        ID=0x0000000F Parent=0x00000004 SizeRef=302,179 Selected=0x60B9D088\n\
       DockNode        ID=0x00000010 Parent=0x00000004 SizeRef=302,36 Selected=0x82BEE2E5\n\
-  DockNode            ID=0x00000002 Parent=0x8B93E3BD SizeRef=1280,512 Split=X Selected=0x6C01C512\n\
+  DockNode            ID=0x00000002 Parent=0x8B93E3BD SizeRef=1280,493 Split=X Selected=0x6C01C512\n\
     DockNode          ID=0x0000000B Parent=0x00000002 SizeRef=1246,503 Split=X Selected=0xB9ADD0D5\n\
       DockNode        ID=0x00000011 Parent=0x0000000B SizeRef=1093,557 Split=X Selected=0xB9ADD0D5\n\
         DockNode      ID=0x00000013 Parent=0x00000011 SizeRef=827,557 Split=Y Selected=0xB9ADD0D5\n\
           DockNode    ID=0x00000015 Parent=0x00000013 SizeRef=1246,336 Split=X Selected=0xB9ADD0D5\n\
-            DockNode  ID=0x00000017 Parent=0x00000015 SizeRef=939,557 CentralNode=1 HiddenTabBar=1 Selected=0xB9ADD0D5\n\
-            DockNode  ID=0x00000018 Parent=0x00000015 SizeRef=305,557 Selected=0xB94874DD\n\
+            DockNode  ID=0x00000017 Parent=0x00000015 SizeRef=847,557 CentralNode=1 HiddenTabBar=1 Selected=0xB9ADD0D5\n\
+            DockNode  ID=0x00000018 Parent=0x00000015 SizeRef=397,557 Selected=0xB94874DD\n\
           DockNode    ID=0x00000016 Parent=0x00000013 SizeRef=1246,219 Selected=0xAD8E88F2\n\
         DockNode      ID=0x00000014 Parent=0x00000011 SizeRef=417,557 Selected=0x425428FB\n\
       DockNode        ID=0x00000012 Parent=0x0000000B SizeRef=151,557 HiddenTabBar=1 Selected=0x4C07BC58\n\
@@ -4410,6 +4410,22 @@ bool FurnaceGUI::loop() {
     }
     ImGui_ImplSDL2_NewFrame(sdlWin);
     ImGui::NewFrame();
+
+#ifdef __EMSCRIPTEN__
+    // Desktop builds persist the workspace during a clean shutdown. A browser
+    // tab often never reaches that path, so honor ImGui's deferred save signal
+    // while the application is running and flush the file to IDBFS.
+    if (!mobileUI && ImGui::GetIO().WantSaveIniSettings) {
+      if (!ImGui::SaveIniSettingsToDisk(finalLayoutPath,true)) {
+        logW("could not save web layout: %s",strerror(errno));
+      } else {
+        EM_ASM({
+          if (Module.kriSyncStorage) Module.kriSyncStorage();
+        });
+      }
+      ImGui::GetIO().WantSaveIniSettings=false;
+    }
+#endif
 
     // one second counter
     secondTimer+=ImGui::GetIO().DeltaTime;
