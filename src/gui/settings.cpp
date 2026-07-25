@@ -34,6 +34,10 @@
 #include "scaling.h"
 #include <fmt/printf.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
@@ -46,6 +50,10 @@
 #endif
 
 #define DEFAULT_NOTE_KEYS "5:7;6:4;7:3;8:16;10:6;11:8;12:24;13:10;16:11;17:9;18:26;19:28;20:12;21:17;22:1;23:19;24:23;25:5;26:14;27:2;28:21;29:0;30:100;31:13;32:15;34:18;35:20;36:22;38:25;39:27;43:100;46:101;47:29;48:31;53:102;"
+
+#ifdef FURNACE_KRI_ONLY
+static void applyKriDB16Palette(ImVec4* colors);
+#endif
 
 #if defined(_WIN32) || defined(__APPLE__) || defined(IS_MOBILE)
 #define POWER_SAVE_DEFAULT 1
@@ -553,9 +561,19 @@ void FurnaceGUI::drawSettings() {
     ImGui::SetNextWindowPos(setWindowPos);
     ImGui::SetNextWindowSize(setWindowSize);
   } else {
+#ifdef FURNACE_KRI_ONLY
+    ImGui::SetNextWindowDockID(0,ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(canvasW*0.5f,canvasH*0.5f),ImGuiCond_Appearing,ImVec2(0.5f,0.5f));
+    ImGui::SetNextWindowSize(ImVec2(640.0f*dpiScale,390.0f*dpiScale),ImGuiCond_Appearing);
+#endif
     ImGui::SetNextWindowSizeConstraints(ImVec2(200.0f*dpiScale,100.0f*dpiScale),ImVec2(canvasW,canvasH));
   }
-  if (ImGui::Begin("Settings",&settingsOpen,ImGuiWindowFlags_NoDocking|globalWinFlags,_("Settings"))) {
+#ifdef FURNACE_KRI_ONLY
+  const char* settingsWindowTitle=_("settings");
+#else
+  const char* settingsWindowTitle=_("Settings");
+#endif
+  if (ImGui::Begin(settingsWindowTitle,&settingsOpen,ImGuiWindowFlags_NoDocking|globalWinFlags,settingsWindowTitle)) {
     if (!settingsOpen) {
       if (settingsChanged) {
         settingsOpen=true;
@@ -564,6 +582,79 @@ void FurnaceGUI::drawSettings() {
         settingsOpen=false;
       }
     }
+#ifdef FURNACE_KRI_ONLY
+    if (ImGui::BeginTabBar("settingsTab")) {
+      if (ImGui::BeginTabItem(_("editor"))) {
+        if (ImGui::InputText(_("default author"),&settings.defaultAuthorName)) settingsChanged=true;
+
+        String scaleLabel=settings.dpiScale<0.5f?"auto":fmt::sprintf("%.2fx",settings.dpiScale);
+        if (ImGui::BeginCombo(_("interface scale"),scaleLabel.c_str())) {
+          const float scales[]={0.0f,1.0f,1.25f,1.5f,2.0f};
+          const char* labels[]={"auto","1.00x","1.25x","1.50x","2.00x"};
+          for (int i=0; i<5; i++) {
+            if (ImGui::Selectable(labels[i],settings.dpiScale==scales[i])) {
+              settings.dpiScale=scales[i];
+              settingsChanged=true;
+            }
+          }
+          ImGui::EndCombo();
+        }
+        if (ImGui::SliderInt(_("interface text size"),&settings.mainFontSize,12,28)) settingsChanged=true;
+        if (ImGui::SliderInt(_("pattern text size"),&settings.patFontSize,12,28)) settingsChanged=true;
+        bool hexOrders=settings.orderRowsBase!=0;
+        bool hexPatterns=settings.patRowsBase!=0;
+        if (ImGui::Checkbox(_("hexadecimal order numbers"),&hexOrders)) {
+          settings.orderRowsBase=hexOrders;
+          settingsChanged=true;
+        }
+        if (ImGui::Checkbox(_("hexadecimal pattern rows"),&hexPatterns)) {
+          settings.patRowsBase=hexPatterns;
+          settingsChanged=true;
+        }
+        ImGui::EndTabItem();
+      }
+      if (ImGui::BeginTabItem(_("audio"))) {
+        int previousRate=settings.audioRate;
+        int previousBuffer=settings.audioBufSize;
+        String sampleRate=fmt::sprintf("%d hz",settings.audioRate);
+        if (ImGui::BeginCombo(_("sample rate"),sampleRate.c_str())) {
+          SAMPLE_RATE_SELECTABLE(44100);
+          SAMPLE_RATE_SELECTABLE(48000);
+          ImGui::EndCombo();
+        }
+        String bufferSize=fmt::sprintf("%d samples",settings.audioBufSize);
+        if (ImGui::BeginCombo(_("buffer size"),bufferSize.c_str())) {
+          BUFFER_SIZE_SELECTABLE(512);
+          BUFFER_SIZE_SELECTABLE(1024);
+          BUFFER_SIZE_SELECTABLE(2048);
+          ImGui::EndCombo();
+        }
+        if (previousRate!=settings.audioRate || previousBuffer!=settings.audioBufSize) {
+          audioEngineChanged=true;
+        }
+        ImGui::TextDisabled(_("smaller buffers reduce latency but need more cpu."));
+        ImGui::EndTabItem();
+      }
+      if (ImGui::BeginTabItem(_("safety"))) {
+        ImGui::TextWrapped(_("kri keeps automatic recovery snapshots every 30 seconds and retains the latest 20 copies."));
+        ImGui::Spacing();
+        if (ImGui::Button(_("recover project..."))) {
+          openFileDialog(GUI_FILE_OPEN_BACKUP);
+        }
+#ifdef __EMSCRIPTEN__
+        ImGui::SameLine();
+        if (ImGui::Button(_("download recovery archive"))) {
+          EM_ASM({
+            if (Module.kriDownloadRecoveryArchive) Module.kriDownloadRecoveryArchive();
+          });
+        }
+        ImGui::TextDisabled(_("the archive contains every locally saved project and recovery snapshot."));
+#endif
+        ImGui::EndTabItem();
+      }
+      ImGui::EndTabBar();
+    }
+#else
     if (ImGui::BeginTabBar("settingsTab")) {
       // NEW SETTINGS HERE
       CONFIG_SECTION(_("General")) {
@@ -4752,14 +4843,24 @@ void FurnaceGUI::drawSettings() {
       }
       ImGui::EndTabBar();
     }
+#endif
     ImGui::Separator();
-    if (ImGui::Button(_("OK##SettingsOK"))) {
+#ifdef FURNACE_KRI_ONLY
+    const char* okLabel=_("ok##SettingsOK");
+    const char* cancelLabel=_("cancel##SettingsCancel");
+    const char* applyLabel=_("apply##SettingsApply");
+#else
+    const char* okLabel=_("OK##SettingsOK");
+    const char* cancelLabel=_("Cancel##SettingsCancel");
+    const char* applyLabel=_("Apply##SettingsApply");
+#endif
+    if (ImGui::Button(okLabel)) {
       settingsOpen=false;
       willCommit=true;
       settingsChanged=false;
     }
     ImGui::SameLine();
-    if (ImGui::Button(_("Cancel##SettingsCancel"))) {
+    if (ImGui::Button(cancelLabel)) {
       settingsOpen=false;
       audioEngineChanged=false;
       syncSettings();
@@ -4767,7 +4868,7 @@ void FurnaceGUI::drawSettings() {
     }
     ImGui::SameLine();
     ImGui::BeginDisabled(!settingsChanged);
-    if (ImGui::Button(_("Apply##SettingsApply"))) {
+    if (ImGui::Button(applyLabel)) {
       settingsOpen=true;
       willCommit=true;
       settingsChanged=false;
@@ -4954,6 +5055,11 @@ void FurnaceGUI::readConfig(DivConfig& conf, FurnaceGUISettingGroups groups) {
     settings.backupEnable=conf.getInt("backupEnable",1);
     settings.backupInterval=conf.getInt("backupInterval",30);
     settings.backupMaxCopies=conf.getInt("backupMaxCopies",5);
+#ifdef FURNACE_KRI_ONLY
+    settings.backupEnable=1;
+    settings.backupInterval=30;
+    settings.backupMaxCopies=20;
+#endif
 
     settings.autoFillSave=conf.getInt("autoFillSave",0);
 
@@ -5195,6 +5301,12 @@ void FurnaceGUI::readConfig(DivConfig& conf, FurnaceGUISettingGroups groups) {
     for (int i=0; i<GUI_COLOR_MAX; i++) {
       uiColors[i]=ImGui::ColorConvertU32ToFloat4(conf.getInt(guiColors[i].name,guiColors[i].defaultColor));
     }
+#ifdef FURNACE_KRI_ONLY
+    applyKriDB16Palette(uiColors);
+    settings.guiColorsBase=0;
+    settings.guiColorsShading=0;
+    settings.basicColors=1;
+#endif
   }
 
   if (groups&GUI_SETTINGS_EMULATION) {
@@ -6154,10 +6266,99 @@ bool FurnaceGUI::exportConfig(String path) {
   return true;
 }
 
+#ifdef FURNACE_KRI_ONLY
+static ImVec4 kriDB16Color(unsigned int rgb, float alpha=1.0f) {
+  return ImVec4(
+    ((rgb>>16)&0xff)/255.0f,
+    ((rgb>>8)&0xff)/255.0f,
+    (rgb&0xff)/255.0f,
+    alpha
+  );
+}
+
+static void applyKriDB16Palette(ImVec4* colors) {
+  static const unsigned int palette[]={
+    0x140c1c,0x442434,0x30346d,0x4e4a4e,
+    0x854c30,0x346524,0xd04648,0x757161,
+    0x597dce,0xd27d2c,0x8595a1,0x6daa2c,
+    0xd2aa99,0x6dc2ca,0xdad45e,0xdeeed6
+  };
+
+  // Keep every semantic color inside the same deliberately small palette.
+  for (int i=0; i<GUI_COLOR_MAX; i++) {
+    float bestDistance=100.0f;
+    unsigned int best=palette[0];
+    for (unsigned int candidate: palette) {
+      ImVec4 c=kriDB16Color(candidate);
+      float dr=colors[i].x-c.x;
+      float dg=colors[i].y-c.y;
+      float db=colors[i].z-c.z;
+      float distance=dr*dr+dg*dg+db*db;
+      if (distance<bestDistance) {
+        bestDistance=distance;
+        best=candidate;
+      }
+    }
+    colors[i]=kriDB16Color(best,colors[i].w);
+  }
+
+  colors[GUI_COLOR_BACKGROUND]=kriDB16Color(0x140c1c);
+  colors[GUI_COLOR_FRAME_BACKGROUND]=kriDB16Color(0x140c1c);
+  colors[GUI_COLOR_FRAME_BACKGROUND_POPUP]=kriDB16Color(0x442434);
+  colors[GUI_COLOR_HEADER]=kriDB16Color(0xdeeed6);
+  colors[GUI_COLOR_TEXT]=kriDB16Color(0xdeeed6);
+  colors[GUI_COLOR_TEXT_DISABLED]=kriDB16Color(0x8595a1);
+  colors[GUI_COLOR_ACCENT_PRIMARY]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_ACCENT_SECONDARY]=kriDB16Color(0x597dce);
+  colors[GUI_COLOR_BORDER]=kriDB16Color(0x4e4a4e);
+  colors[GUI_COLOR_SCROLL]=kriDB16Color(0x4e4a4e);
+  colors[GUI_COLOR_SCROLL_HOVER]=kriDB16Color(0x8595a1);
+  colors[GUI_COLOR_SCROLL_ACTIVE]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_TOGGLE_OFF]=kriDB16Color(0x4e4a4e);
+  colors[GUI_COLOR_TOGGLE_ON]=kriDB16Color(0x6daa2c);
+  colors[GUI_COLOR_EDITING]=kriDB16Color(0xdad45e);
+  colors[GUI_COLOR_EDITING_CLONE]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_DESTRUCTIVE]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_WARNING]=kriDB16Color(0xd27d2c);
+  colors[GUI_COLOR_ERROR]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_CHANNEL_FM]=kriDB16Color(0x597dce);
+  colors[GUI_COLOR_CHANNEL_PULSE]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_CHANNEL_NOISE]=kriDB16Color(0xd27d2c);
+  colors[GUI_COLOR_CHANNEL_MUTED]=kriDB16Color(0x757161);
+  colors[GUI_COLOR_PATTERN_CURSOR]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_PATTERN_CURSOR_HOVER]=kriDB16Color(0xdad45e);
+  colors[GUI_COLOR_PATTERN_SELECTION]=kriDB16Color(0x30346d,0.75f);
+  colors[GUI_COLOR_PATTERN_HI_1]=kriDB16Color(0x442434);
+  colors[GUI_COLOR_PATTERN_HI_2]=kriDB16Color(0x30346d);
+  colors[GUI_COLOR_PATTERN_ACTIVE]=kriDB16Color(0xdeeed6);
+  colors[GUI_COLOR_PATTERN_INACTIVE]=kriDB16Color(0x757161);
+  colors[GUI_COLOR_PATTERN_INS]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_PATTERN_INS_WARN]=kriDB16Color(0xd27d2c);
+  colors[GUI_COLOR_PATTERN_INS_ERROR]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_PATTERN_EFFECT_PITCH]=kriDB16Color(0x597dce);
+  colors[GUI_COLOR_PATTERN_EFFECT_VOLUME]=kriDB16Color(0x6daa2c);
+  colors[GUI_COLOR_PATTERN_EFFECT_PANNING]=kriDB16Color(0xd27d2c);
+  colors[GUI_COLOR_PATTERN_EFFECT_SONG]=kriDB16Color(0xdad45e);
+  colors[GUI_COLOR_PATTERN_EFFECT_TIME]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_PATTERN_EFFECT_SYS_SECONDARY]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_OSC_BORDER]=kriDB16Color(0x4e4a4e);
+  colors[GUI_COLOR_OSC_WAVE]=kriDB16Color(0x6dc2ca);
+  colors[GUI_COLOR_OSC_WAVE_PEAK]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_OSC_REF]=kriDB16Color(0xdad45e);
+  colors[GUI_COLOR_VOLMETER_LOW]=kriDB16Color(0x6daa2c);
+  colors[GUI_COLOR_VOLMETER_HIGH]=kriDB16Color(0xdad45e);
+  colors[GUI_COLOR_VOLMETER_PEAK]=kriDB16Color(0xd04648);
+  colors[GUI_COLOR_PLAYBACK_STAT]=kriDB16Color(0x6dc2ca);
+}
+#endif
+
 void FurnaceGUI::resetColors() {
   for (int i=0; i<GUI_COLOR_MAX; i++) {
     uiColors[i]=ImGui::ColorConvertU32ToFloat4(guiColors[i].defaultColor);
   }
+#ifdef FURNACE_KRI_ONLY
+  applyKriDB16Palette(uiColors);
+#endif
 }
 
 void FurnaceGUI::resetKeybinds() {
@@ -6592,76 +6793,80 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
   }
 
 #ifdef FURNACE_KRI_ONLY
-  // A quieter, flatter visual language for kri. Keep Furnace's semantic
-  // tracker colors, but replace the stock-looking ImGui chrome.
-  const ImVec4 kriText(0.90f,0.93f,0.95f,1.00f);
-  const ImVec4 kriTextMuted(0.46f,0.51f,0.57f,1.00f);
-  const ImVec4 kriBase(0.040f,0.047f,0.060f,1.00f);
-  const ImVec4 kriSurface(0.065f,0.075f,0.095f,1.00f);
-  const ImVec4 kriSurfaceHover(0.095f,0.110f,0.135f,1.00f);
-  const ImVec4 kriSurfaceActive(0.125f,0.150f,0.170f,1.00f);
-  const ImVec4 kriRaised(0.080f,0.092f,0.115f,1.00f);
-  const ImVec4 kriBorder(0.165f,0.190f,0.225f,0.90f);
-  const ImVec4 kriAccent(0.67f,0.84f,0.36f,1.00f);
-  const ImVec4 kriAccentSoft(0.28f,0.36f,0.16f,1.00f);
-  const ImVec4 kriAccentHover(0.37f,0.47f,0.21f,1.00f);
+  // DawnBringer 16 is kri's visual language: deep aubergine surfaces,
+  // restrained blue structure, cyan focus, and yellow/green status color.
+  const ImVec4 kriText=kriDB16Color(0xdeeed6);
+  const ImVec4 kriTextMuted=kriDB16Color(0x8595a1);
+  const ImVec4 kriBase=kriDB16Color(0x140c1c);
+  const ImVec4 kriSurface=kriDB16Color(0x442434);
+  const ImVec4 kriSurfaceHover=kriDB16Color(0x30346d);
+  const ImVec4 kriSurfaceActive=kriDB16Color(0x597dce);
+  const ImVec4 kriRaised=kriDB16Color(0x30346d);
+  const ImVec4 kriBorder=kriDB16Color(0x4e4a4e);
+  const ImVec4 kriAccent=kriDB16Color(0x6dc2ca);
+  const ImVec4 kriWarm=kriDB16Color(0xdad45e);
 
   sty.Colors[ImGuiCol_Text]=kriText;
   sty.Colors[ImGuiCol_TextDisabled]=kriTextMuted;
   sty.Colors[ImGuiCol_WindowBg]=kriBase;
-  sty.Colors[ImGuiCol_ChildBg]=ImVec4(0.0f,0.0f,0.0f,0.0f);
-  sty.Colors[ImGuiCol_PopupBg]=ImVec4(0.055f,0.063f,0.080f,0.98f);
+  sty.Colors[ImGuiCol_ChildBg]=kriDB16Color(0x140c1c,0.0f);
+  sty.Colors[ImGuiCol_PopupBg]=kriDB16Color(0x140c1c,0.98f);
   sty.Colors[ImGuiCol_Border]=kriBorder;
-  sty.Colors[ImGuiCol_BorderShadow]=ImVec4(0.0f,0.0f,0.0f,0.0f);
+  sty.Colors[ImGuiCol_BorderShadow]=kriDB16Color(0x140c1c,0.0f);
   sty.Colors[ImGuiCol_FrameBg]=kriSurface;
   sty.Colors[ImGuiCol_FrameBgHovered]=kriSurfaceHover;
   sty.Colors[ImGuiCol_FrameBgActive]=kriSurfaceActive;
   sty.Colors[ImGuiCol_TitleBg]=kriBase;
   sty.Colors[ImGuiCol_TitleBgActive]=kriRaised;
   sty.Colors[ImGuiCol_TitleBgCollapsed]=kriBase;
-  sty.Colors[ImGuiCol_MenuBarBg]=ImVec4(0.050f,0.057f,0.070f,1.00f);
-  sty.Colors[ImGuiCol_ScrollbarBg]=ImVec4(0.025f,0.030f,0.040f,0.65f);
-  sty.Colors[ImGuiCol_ScrollbarGrab]=ImVec4(0.20f,0.23f,0.27f,1.00f);
-  sty.Colors[ImGuiCol_ScrollbarGrabHovered]=ImVec4(0.28f,0.32f,0.37f,1.00f);
-  sty.Colors[ImGuiCol_ScrollbarGrabActive]=ImVec4(0.36f,0.41f,0.46f,1.00f);
+  sty.Colors[ImGuiCol_MenuBarBg]=kriBase;
+  sty.Colors[ImGuiCol_ScrollbarBg]=kriDB16Color(0x140c1c,0.65f);
+  sty.Colors[ImGuiCol_ScrollbarGrab]=kriDB16Color(0x4e4a4e);
+  sty.Colors[ImGuiCol_ScrollbarGrabHovered]=kriDB16Color(0x8595a1);
+  sty.Colors[ImGuiCol_ScrollbarGrabActive]=kriAccent;
   sty.Colors[ImGuiCol_CheckMark]=kriAccent;
   sty.Colors[ImGuiCol_SliderGrab]=kriAccent;
-  sty.Colors[ImGuiCol_SliderGrabActive]=ImVec4(0.76f,0.92f,0.45f,1.00f);
+  sty.Colors[ImGuiCol_SliderGrabActive]=kriWarm;
   sty.Colors[ImGuiCol_Button]=kriSurface;
   sty.Colors[ImGuiCol_ButtonHovered]=kriSurfaceHover;
-  sty.Colors[ImGuiCol_ButtonActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_ButtonActive]=kriSurfaceActive;
   sty.Colors[ImGuiCol_Header]=kriSurface;
   sty.Colors[ImGuiCol_HeaderHovered]=kriSurfaceHover;
-  sty.Colors[ImGuiCol_HeaderActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_HeaderActive]=kriSurfaceActive;
   sty.Colors[ImGuiCol_Separator]=kriBorder;
-  sty.Colors[ImGuiCol_SeparatorHovered]=kriAccentHover;
+  sty.Colors[ImGuiCol_SeparatorHovered]=kriWarm;
   sty.Colors[ImGuiCol_SeparatorActive]=kriAccent;
   sty.Colors[ImGuiCol_ResizeGrip]=ImVec4(0.0f,0.0f,0.0f,0.0f);
-  sty.Colors[ImGuiCol_ResizeGripHovered]=kriAccentHover;
+  sty.Colors[ImGuiCol_ResizeGripHovered]=kriWarm;
   sty.Colors[ImGuiCol_ResizeGripActive]=kriAccent;
   sty.Colors[ImGuiCol_Tab]=kriSurface;
   sty.Colors[ImGuiCol_TabHovered]=kriSurfaceHover;
-  sty.Colors[ImGuiCol_TabActive]=kriAccentSoft;
+  sty.Colors[ImGuiCol_TabActive]=kriSurfaceActive;
   sty.Colors[ImGuiCol_TabUnfocused]=kriBase;
   sty.Colors[ImGuiCol_TabUnfocusedActive]=kriRaised;
   sty.Colors[ImGuiCol_DockingPreview]=ImVec4(kriAccent.x,kriAccent.y,kriAccent.z,0.55f);
   sty.Colors[ImGuiCol_DockingEmptyBg]=kriBase;
   sty.Colors[ImGuiCol_TableHeaderBg]=kriRaised;
   sty.Colors[ImGuiCol_TableBorderStrong]=kriBorder;
-  sty.Colors[ImGuiCol_TableBorderLight]=ImVec4(kriBorder.x,kriBorder.y,kriBorder.z,0.45f);
-  sty.Colors[ImGuiCol_TableRowBg]=ImVec4(0.0f,0.0f,0.0f,0.0f);
-  sty.Colors[ImGuiCol_TableRowBgAlt]=ImVec4(1.0f,1.0f,1.0f,0.025f);
+  sty.Colors[ImGuiCol_TableBorderLight]=kriDB16Color(0x4e4a4e,0.45f);
+  sty.Colors[ImGuiCol_TableRowBg]=kriDB16Color(0x140c1c,0.0f);
+  sty.Colors[ImGuiCol_TableRowBgAlt]=kriDB16Color(0x442434,0.35f);
   sty.Colors[ImGuiCol_TextSelectedBg]=ImVec4(kriAccent.x,kriAccent.y,kriAccent.z,0.28f);
   sty.Colors[ImGuiCol_NavHighlight]=kriAccent;
-  sty.Colors[ImGuiCol_ModalWindowDimBg]=ImVec4(0.0f,0.0f,0.0f,0.68f);
+  sty.Colors[ImGuiCol_ModalWindowDimBg]=kriDB16Color(0x140c1c,0.78f);
 
-  sty.WindowRounding=5.0f;
-  sty.ChildRounding=4.0f;
-  sty.PopupRounding=5.0f;
-  sty.FrameRounding=4.0f;
-  sty.ScrollbarRounding=5.0f;
-  sty.GrabRounding=4.0f;
-  sty.TabRounding=4.0f;
+  sty.WindowPadding=ImVec2(8.0f,8.0f);
+  sty.FramePadding=ImVec2(8.0f,5.0f);
+  sty.ItemSpacing=ImVec2(7.0f,5.0f);
+  sty.ItemInnerSpacing=ImVec2(6.0f,4.0f);
+  sty.CellPadding=ImVec2(7.0f,5.0f);
+  sty.WindowRounding=3.0f;
+  sty.ChildRounding=3.0f;
+  sty.PopupRounding=3.0f;
+  sty.FrameRounding=3.0f;
+  sty.ScrollbarRounding=3.0f;
+  sty.GrabRounding=3.0f;
+  sty.TabRounding=3.0f;
   sty.WindowBorderSize=1.0f;
   sty.ChildBorderSize=1.0f;
   sty.PopupBorderSize=1.0f;

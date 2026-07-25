@@ -616,6 +616,16 @@ void FurnaceGUI::setFileName(String name) {
 
 void FurnaceGUI::updateWindowTitle() {
   String title;
+#ifdef FURNACE_KRI_ONLY
+  if (!e->song.name.empty()) {
+    title=fmt::sprintf("%s - kri",e->song.name);
+  } else if (!curFileName.empty()) {
+    size_t pos=curFileName.rfind(DIR_SEPARATOR);
+    title=fmt::sprintf("%s - kri",(pos==String::npos?curFileName:curFileName.substr(pos+1)));
+  } else {
+    title="kri";
+  }
+#else
   switch (settings.titleBarInfo) {
     case 0:
       title="Furnace";
@@ -649,6 +659,7 @@ void FurnaceGUI::updateWindowTitle() {
       }
       break;
   }
+#endif
 
   if (settings.titleBarSys) {
     if (e->song.systemName!="") {
@@ -1782,9 +1793,14 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
     case GUI_FILE_OPEN:
       if (!dirExists(workingDirSong)) workingDirSong=getHomeDir();
       hasOpened=fileDialog->openLoad(
+#ifdef FURNACE_KRI_ONLY
+        _("open project"),
+        {_("kri project"), "*.fur"},
+#else
         _("Open File"),
         {_("compatible files"), "*.fur *.dmf *.mod *.s3m *.xm *.it *.fc13 *.fc14 *.smod *.fc *.ftm *.0cc *.dnm *.eft *.fub *.tfe",
          _("all files"), "*"},
+#endif
         workingDirSong,
         dpiScale
       );
@@ -1795,8 +1811,13 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
         break;
       }
       hasOpened=fileDialog->openLoad(
+#ifdef FURNACE_KRI_ONLY
+        _("recover project"),
+        {_("kri project"), "*.fur"},
+#else
         _("Restore Backup"),
         {_("Furnace song"), "*.fur"},
+#endif
         backupPath+String(DIR_SEPARATOR_STR),
         dpiScale
       );
@@ -1804,8 +1825,13 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
     case GUI_FILE_SAVE:
       if (!dirExists(workingDirSong)) workingDirSong=getHomeDir();
       hasOpened=fileDialog->openSave(
+#ifdef FURNACE_KRI_ONLY
+        _("save project"),
+        {_("kri project"), "*.fur"},
+#else
         _("Save File"),
         {_("Furnace song"), "*.fur"},
+#endif
         workingDirSong,
         dpiScale
       );
@@ -2492,7 +2518,11 @@ int FurnaceGUI::load(String path) {
     }
   } else {
     // warn the user
+#ifdef FURNACE_KRI_ONLY
+    showWarning(_("this is a recovery snapshot. save it as a project before continuing; recovery snapshots are never overwritten."),GUI_WARN_GENERIC);
+#else
     showWarning(_("you have loaded a backup!\nif you need to, please save it somewhere.\n\nDO NOT RELY ON THE BACKUP SYSTEM FOR AUTO-SAVE!\nFurnace will not save backups of backups."),GUI_WARN_GENERIC);
+#endif
   }
 
   // if this is a PC module import, warn the user on the first import.
@@ -4442,6 +4472,15 @@ bool FurnaceGUI::loop() {
     ImGui::NewFrame();
 
 #ifdef __EMSCRIPTEN__
+#ifdef FURNACE_KRI_ONLY
+    static bool previousKriDirty=false;
+    if (previousKriDirty!=modified) {
+      previousKriDirty=modified;
+      EM_ASM({
+        if (Module.kriSetDocumentDirty) Module.kriSetDocumentDirty(!!$0);
+      },modified);
+    }
+#endif
     // Desktop builds persist the workspace during a clean shutdown. A browser
     // tab often never reaches that path, so honor ImGui's deferred save signal
     // while the application is running and flush the file to IDBFS.
@@ -4626,6 +4665,7 @@ bool FurnaceGUI::loop() {
 #endif
         }
         ImGui::Separator();
+#ifndef FURNACE_KRI_ONLY
         if (!settings.classicChipOptions) {
           if (ImGui::MenuItem(_("manage chips"))) {
             nextWindow=GUI_WINDOW_SYS_MANAGER;
@@ -4703,6 +4743,7 @@ bool FurnaceGUI::loop() {
             ImGui::EndMenu();
           }
         }
+#endif
 #if defined(FURNACE_DATADIR) && defined(SHOW_OPEN_ASSETS_MENU_ENTRY)
         if (ImGui::MenuItem(_("open built-in assets directory"))) {
           SDL_OpenURL("file://" FURNACE_DATADIR);
@@ -4710,13 +4751,26 @@ bool FurnaceGUI::loop() {
 #endif
         ImGui::BeginDisabled(exitDisabledTimer);
         ImGui::Separator();
+#ifdef FURNACE_KRI_ONLY
+        if (ImGui::MenuItem(_("recover project..."),BIND_FOR(GUI_ACTION_OPEN_BACKUP))) {
+#else
         if (ImGui::MenuItem(_("restore backup"),BIND_FOR(GUI_ACTION_OPEN_BACKUP))) {
+#endif
           doAction(GUI_ACTION_OPEN_BACKUP);
         }
+#if defined(__EMSCRIPTEN__) && defined(FURNACE_KRI_ONLY)
+        if (ImGui::MenuItem(_("download recovery archive"))) {
+          EM_ASM({
+            if (Module.kriDownloadRecoveryArchive) Module.kriDownloadRecoveryArchive();
+          });
+        }
+#endif
+#ifndef FURNACE_KRI_ONLY
         ImGui::Separator();
         if (ImGui::MenuItem(_("exit..."),BIND_FOR(GUI_ACTION_QUIT))) {
           requestQuit();
         }
+#endif
         ImGui::EndDisabled();
         ImGui::EndMenu();
       } else {
@@ -4761,6 +4815,7 @@ bool FurnaceGUI::loop() {
         if (ImGui::MenuItem(_("lock layout"),NULL,lockLayout)) {
           lockLayout=!lockLayout;
         }
+#ifndef FURNACE_KRI_ONLY
         if (ImGui::MenuItem(_("pattern visualizer"),NULL,fancyPattern)) {
           fancyPattern=!fancyPattern;
           e->enableCommandStream(fancyPattern);
@@ -4778,6 +4833,7 @@ bool FurnaceGUI::loop() {
         if (ImGui::MenuItem(_("user systems..."),BIND_FOR(GUI_ACTION_WINDOW_USER_PRESETS))) {
           userPresetsOpen=true;
         }
+#endif
         if (ImGui::MenuItem(_("settings..."),BIND_FOR(GUI_ACTION_WINDOW_SETTINGS))) {
           syncSettings();
           settingsOpen=true;
@@ -4791,12 +4847,16 @@ bool FurnaceGUI::loop() {
           if (ImGui::MenuItem(_("subsongs"), BIND_FOR(GUI_ACTION_WINDOW_SUBSONGS), subSongsOpen)) subSongsOpen = !subSongsOpen;
           ImGui::Separator();
           if (ImGui::MenuItem(_("channels"),BIND_FOR(GUI_ACTION_WINDOW_CHANNELS),channelsOpen)) channelsOpen=!channelsOpen;
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("chip manager"),BIND_FOR(GUI_ACTION_WINDOW_SYS_MANAGER),sysManagerOpen)) sysManagerOpen=!sysManagerOpen;
+#endif
           if (ImGui::MenuItem(_("orders"),BIND_FOR(GUI_ACTION_WINDOW_ORDERS),ordersOpen)) ordersOpen=!ordersOpen;
           if (ImGui::MenuItem(_("pattern"),BIND_FOR(GUI_ACTION_WINDOW_PATTERN),patternOpen)) patternOpen=!patternOpen;
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("pattern manager"),BIND_FOR(GUI_ACTION_WINDOW_PAT_MANAGER),patManagerOpen)) patManagerOpen=!patManagerOpen;
           if (ImGui::MenuItem(_("mixer"),BIND_FOR(GUI_ACTION_WINDOW_MIXER),mixerOpen)) mixerOpen=!mixerOpen;
           if (ImGui::MenuItem(_("compatibility flags"),BIND_FOR(GUI_ACTION_WINDOW_COMPAT_FLAGS),compatFlagsOpen)) compatFlagsOpen=!compatFlagsOpen;
+#endif
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu(_("assets"))) {
@@ -4820,16 +4880,21 @@ bool FurnaceGUI::loop() {
         if (ImGui::BeginMenu(_("visualizers"))) {
           if (ImGui::MenuItem(_("oscilloscope (master)"),BIND_FOR(GUI_ACTION_WINDOW_OSCILLOSCOPE),oscOpen)) oscOpen=!oscOpen;
           if (ImGui::MenuItem(_("oscilloscope (per-channel)"),BIND_FOR(GUI_ACTION_WINDOW_CHAN_OSC),chanOscOpen)) chanOscOpen=!chanOscOpen;
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("oscilloscope (X-Y)"),BIND_FOR(GUI_ACTION_WINDOW_XY_OSC),xyOscOpen)) xyOscOpen=!xyOscOpen;
+#endif
           if (ImGui::MenuItem(_("volume meter"),BIND_FOR(GUI_ACTION_WINDOW_VOL_METER),volMeterOpen)) volMeterOpen=!volMeterOpen;
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu(_("tempo"))) {
+#ifndef FURNACE_KRI_ONLY
           if (ImGui::MenuItem(_("clock"),BIND_FOR(GUI_ACTION_WINDOW_CLOCK),clockOpen)) clockOpen=!clockOpen;
+#endif
           if (ImGui::MenuItem(_("grooves"),BIND_FOR(GUI_ACTION_WINDOW_GROOVES),groovesOpen)) groovesOpen=!groovesOpen;
           if (ImGui::MenuItem(_("speed"),BIND_FOR(GUI_ACTION_WINDOW_SPEED),speedOpen)) speedOpen=!speedOpen;
           ImGui::EndMenu();
         }
+#ifndef FURNACE_KRI_ONLY
         if (ImGui::BeginMenu(_("debug"))) {
           if (ImGui::MenuItem(_("log viewer"),BIND_FOR(GUI_ACTION_WINDOW_LOG),logOpen)) logOpen=!logOpen;
           if (ImGui::MenuItem(_("register view"),BIND_FOR(GUI_ACTION_WINDOW_REGISTER_VIEW),regViewOpen)) regViewOpen=!regViewOpen;
@@ -4837,6 +4902,7 @@ bool FurnaceGUI::loop() {
           if (ImGui::MenuItem(_("memory composition"),BIND_FOR(GUI_ACTION_WINDOW_MEMORY),memoryOpen)) memoryOpen=!memoryOpen;
           ImGui::EndMenu();
         }
+#endif
         ImGui::Separator();
         if (ImGui::MenuItem(_("effect list"),BIND_FOR(GUI_ACTION_WINDOW_EFFECT_LIST),effectListOpen)) effectListOpen=!effectListOpen;
         if (ImGui::MenuItem(_("play/edit controls"),BIND_FOR(GUI_ACTION_WINDOW_EDIT_CONTROLS),editControlsOpen)) editControlsOpen=!editControlsOpen;
@@ -4847,8 +4913,10 @@ bool FurnaceGUI::loop() {
       }
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Help"):_("help"))) {
         if (ImGui::MenuItem(_("effect list"),BIND_FOR(GUI_ACTION_WINDOW_EFFECT_LIST),effectListOpen)) effectListOpen=!effectListOpen;
+#ifndef FURNACE_KRI_ONLY
         if (ImGui::MenuItem(_("debug menu"),BIND_FOR(GUI_ACTION_WINDOW_DEBUG))) debugOpen=!debugOpen;
         if (ImGui::MenuItem(_("inspector"))) inspectorOpen=!inspectorOpen;
+#endif
         if (ImGui::MenuItem(_("panic"),BIND_FOR(GUI_ACTION_PANIC))) e->syncReset();
         if (ImGui::MenuItem(_("welcome screen"))) tutorial.protoWelcome=false;
         if (ImGui::MenuItem(_("about..."),BIND_FOR(GUI_ACTION_WINDOW_ABOUT))) {
@@ -7707,7 +7775,11 @@ bool FurnaceGUI::init() {
   rend->preInit(e->getConfObject());
 
   logD("creating window...");
+#ifdef FURNACE_KRI_ONLY
+  sdlWin=SDL_CreateWindow("kri",scrX,scrY,scrW,scrH,SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI|(scrMax?SDL_WINDOW_MAXIMIZED:0)|(fullScreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0)|rend->getWindowFlags());
+#else
   sdlWin=SDL_CreateWindow("Furnace",scrX,scrY,scrW,scrH,SDL_WINDOW_RESIZABLE|SDL_WINDOW_ALLOW_HIGHDPI|(scrMax?SDL_WINDOW_MAXIMIZED:0)|(fullScreen?SDL_WINDOW_FULLSCREEN_DESKTOP:0)|rend->getWindowFlags());
+#endif
   if (sdlWin==NULL) {
     const char* sdlErr=SDL_GetError();
     lastError=fmt::sprintf(_("could not open window! %s"),sdlErr);

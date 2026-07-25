@@ -14,8 +14,13 @@ kri `.fur` files use the kri system id and are intended for this fork. wave
 export renders audio. zsm export produces an uncompressed register stream, not
 a complete rom, so large songs may need to be shortened, optimized or streamed.
 
-settings and recovery backups are stored in browser-local storage. download
-important project files explicitly.
+settings and recovery snapshots are stored locally in the browser. the status
+pill reports saved, unsaved, syncing and failed states; hover it to see quota
+usage. kri warns before closing an unsaved project, keeps the latest 20
+snapshots, and exposes `recover project...` plus a one-click recovery archive
+under `file`.
+
+the interface uses dawnbringer's dawnbringer16 palette.
 
 ```sh
 ./scripts/build-web-kri.sh

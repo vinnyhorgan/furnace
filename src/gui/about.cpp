@@ -21,6 +21,7 @@
 #include "gui.h"
 #include <math.h>
 
+#ifndef FURNACE_KRI_ONLY
 const char* aboutLine[]={
   "tildearrow",
   _N("is proud to present"),
@@ -204,8 +205,56 @@ const char* aboutLine[]={
 };
 
 const size_t aboutCount=sizeof(aboutLine)/sizeof(aboutLine[0]);
+#endif
 
 void FurnaceGUI::drawAbout() {
+#ifdef FURNACE_KRI_ONLY
+  ImGui::SetNextWindowSize(ImVec2(500.0f*dpiScale,390.0f*dpiScale),ImGuiCond_FirstUseEver);
+  if (ImGui::Begin("about kri",&aboutOpen,ImGuiWindowFlags_NoDocking)) {
+    ImGui::PushFont(bigFont);
+    ImGui::TextUnformatted("kri");
+    ImGui::PopFont();
+    ImGui::TextColored(uiColors[GUI_COLOR_TEXT_DISABLED],"browser-first music workstation");
+    ImGui::Spacing();
+
+    static const ImU32 palette[]={
+      0xff1c0c14,0xff342444,0xff6d3430,0xff4e4a4e,
+      0xff304c85,0xff246534,0xff4846d0,0xff617175,
+      0xffce7d59,0xff2c7dd2,0xffa19585,0xff2caa6d,
+      0xff99aad2,0xffcac26d,0xff5ed4da,0xffd6eede
+    };
+    ImDrawList* drawList=ImGui::GetWindowDrawList();
+    ImVec2 start=ImGui::GetCursorScreenPos();
+    float swatchWidth=ImGui::GetContentRegionAvail().x/16.0f;
+    for (int i=0; i<16; i++) {
+      drawList->AddRectFilled(
+        ImVec2(start.x+swatchWidth*i,start.y),
+        ImVec2(start.x+swatchWidth*(i+1),start.y+18.0f*dpiScale),
+        palette[i]
+      );
+    }
+    ImGui::Dummy(ImVec2(0,28.0f*dpiScale));
+    ImGui::TextWrapped("a focused tracker for opm + eight-voice vera psg music.");
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextWrapped("built from furnace " DIV_VERSION " by tildearrow and contributors.");
+    ImGui::TextWrapped("kri and furnace are free software licensed under gplv2 or later.");
+    ImGui::TextWrapped("dawnbringer16 palette by dawnbringer.");
+    ImGui::Spacing();
+    if (ImGui::Button("kri source")) {
+      SDL_OpenURL("https://github.com/vinnyhorgan/furnace");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("furnace upstream")) {
+      SDL_OpenURL("https://github.com/tildearrow/furnace");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("close")) aboutOpen=false;
+  }
+  if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) curWindow=GUI_WINDOW_ABOUT;
+  ImGui::End();
+#else
   // do stuff
   if (ImGui::Begin("About Furnace",NULL,ImGuiWindowFlags_Modal|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoDocking|ImGuiWindowFlags_NoTitleBar,_("About Furnace"))) {
     ImGui::SetWindowPos(ImVec2(0,0));
@@ -302,4 +351,5 @@ void FurnaceGUI::drawAbout() {
   }
   if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) curWindow=GUI_WINDOW_ABOUT;
   ImGui::End();
+#endif
 }

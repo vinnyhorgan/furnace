@@ -12,8 +12,8 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background: #101114;
-      color: #e8e8e8;
+      background: #140c1c;
+      color: #deeed6;
       font: 15px system-ui, sans-serif;
     }
     #canvas {
@@ -29,12 +29,43 @@
       display: grid;
       place-items: center;
       z-index: 2;
-      background: #101114;
+      background: #140c1c;
     }
     #loading[hidden] { display: none; }
     #loading > div { text-align: center; }
-    #loading strong { display: block; margin-bottom: .5rem; color: #b6dc55; }
-    #status { color: #a7aab2; }
+    #loading strong { display: block; margin-bottom: .5rem; color: #dad45e; }
+    #status { color: #8595a1; }
+    #storage-indicator {
+      position: fixed;
+      right: 12px;
+      bottom: 10px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border: 1px solid #4e4a4e;
+      border-radius: 999px;
+      background: rgba(20, 12, 28, .94);
+      color: #8595a1;
+      font: 12px/1.2 system-ui, sans-serif;
+      box-shadow: 0 4px 18px rgba(20, 12, 28, .45);
+      cursor: pointer;
+    }
+    #storage-indicator[hidden] { display: none; }
+    #storage-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #757161;
+    }
+    #storage-indicator[data-state="saved"] { color: #deeed6; }
+    #storage-indicator[data-state="saved"] #storage-dot { background: #6daa2c; }
+    #storage-indicator[data-state="dirty"] { color: #dad45e; }
+    #storage-indicator[data-state="dirty"] #storage-dot { background: #d27d2c; }
+    #storage-indicator[data-state="saving"] #storage-dot { background: #6dc2ca; }
+    #storage-indicator[data-state="error"] { color: #deeed6; border-color: #d04648; }
+    #storage-indicator[data-state="error"] #storage-dot { background: #d04648; }
   </style>
 </head>
 <body>
@@ -45,6 +76,10 @@
     </div>
   </div>
   <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <div id="storage-indicator" data-state="saving" hidden>
+    <span id="storage-dot"></span>
+    <span id="storage-text">loading local storage…</span>
+  </div>
   <script src="coi-serviceworker.js"></script>
   <script>
     const loading = document.getElementById('loading');
