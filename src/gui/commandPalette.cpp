@@ -133,6 +133,40 @@ static bool matchFuzzy(const char* haystack, int haystackLen, const char* needle
   return false;
 }
 
+#ifdef FURNACE_KRI_ONLY
+static bool kriActionIsRelevant(int action) {
+  if (action>GUI_ACTION_WAVE_LIST_MIN && action<GUI_ACTION_WAVE_LIST_MAX) return false;
+  if (action>GUI_ACTION_SAMPLE_LIST_MIN && action<GUI_ACTION_SAMPLE_LIST_MAX) return false;
+  if (action>GUI_ACTION_SAMPLE_MIN && action<GUI_ACTION_SAMPLE_MAX) return false;
+  switch (action) {
+    case GUI_ACTION_QUIT:
+    case GUI_ACTION_TX81Z_REQUEST:
+    case GUI_ACTION_CMDPAL_SAMPLES:
+    case GUI_ACTION_CMDPAL_ADD_CHIP:
+    case GUI_ACTION_WINDOW_WAVE_LIST:
+    case GUI_ACTION_WINDOW_WAVE_EDIT:
+    case GUI_ACTION_WINDOW_SAMPLE_LIST:
+    case GUI_ACTION_WINDOW_SAMPLE_EDIT:
+    case GUI_ACTION_WINDOW_MIXER:
+    case GUI_ACTION_WINDOW_DEBUG:
+    case GUI_ACTION_WINDOW_STATS:
+    case GUI_ACTION_WINDOW_COMPAT_FLAGS:
+    case GUI_ACTION_WINDOW_PAT_MANAGER:
+    case GUI_ACTION_WINDOW_SYS_MANAGER:
+    case GUI_ACTION_WINDOW_REGISTER_VIEW:
+    case GUI_ACTION_WINDOW_LOG:
+    case GUI_ACTION_WINDOW_CLOCK:
+    case GUI_ACTION_WINDOW_XY_OSC:
+    case GUI_ACTION_WINDOW_MEMORY:
+    case GUI_ACTION_WINDOW_CS_PLAYER:
+    case GUI_ACTION_WINDOW_USER_PRESETS:
+      return false;
+    default:
+      return true;
+  }
+}
+#endif
+
 #ifdef RUN_MATCH_TEST
 static void matchFuzzyTest() {
   String hay="a__i_a_i__o";
@@ -193,6 +227,9 @@ void FurnaceGUI::drawPalette() {
     case CMDPAL_TYPE_MAIN:
       for (int i=0; i<GUI_ACTION_MAX; i++) {
         if (guiActions[i].isNotABind()) continue;
+#ifdef FURNACE_KRI_ONLY
+        if (!kriActionIsRelevant(i)) continue;
+#endif
         Evaluate(i,guiActions[i].friendlyName,strlen(guiActions[i].friendlyName));
       }
       break;

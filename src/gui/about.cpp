@@ -238,15 +238,15 @@ void FurnaceGUI::drawAbout() {
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
-    ImGui::TextWrapped("built from furnace " DIV_VERSION " by tildearrow and contributors.");
-    ImGui::TextWrapped("kri and furnace are free software licensed under gplv2 or later.");
+    ImGui::TextWrapped("built from upstream v" DIV_VERSION " by tildearrow and contributors.");
+    ImGui::TextWrapped("free software licensed under gplv2 or later.");
     ImGui::TextWrapped("dawnbringer16 palette by dawnbringer.");
     ImGui::Spacing();
     if (ImGui::Button("kri source")) {
       SDL_OpenURL("https://github.com/vinnyhorgan/furnace");
     }
     ImGui::SameLine();
-    if (ImGui::Button("furnace upstream")) {
+    if (ImGui::Button("upstream source")) {
       SDL_OpenURL("https://github.com/tildearrow/furnace");
     }
     ImGui::SameLine();

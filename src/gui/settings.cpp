@@ -638,6 +638,35 @@ void FurnaceGUI::drawSettings() {
       if (ImGui::BeginTabItem(_("safety"))) {
         ImGui::TextWrapped(_("kri keeps automatic recovery snapshots every 30 seconds and retains the latest 20 copies."));
         ImGui::Spacing();
+#ifdef __EMSCRIPTEN__
+        int storageStatus=EM_ASM_INT({
+          const state=Module.kriStorageState;
+          if (!state || !state.ready) return 0;
+          if (state.error) return 3;
+          return state.syncing?2:1;
+        });
+        const char* storageLabel=storageStatus==3?"browser storage failed":
+          (storageStatus==2?"saving browser storage...":
+          (storageStatus==1?"browser storage ready":"loading browser storage..."));
+        ImVec4 storageColor=storageStatus==3?uiColors[GUI_COLOR_ERROR]:
+          (storageStatus==2?uiColors[GUI_COLOR_ACCENT_PRIMARY]:uiColors[GUI_COLOR_TOGGLE_ON]);
+        ImGui::TextColored(storageColor,"%s",_(storageLabel));
+        int usageMiB=EM_ASM_INT({
+          return Module.kriStorageState?Math.round(Module.kriStorageState.usage/1048576):0;
+        });
+        int quotaMiB=EM_ASM_INT({
+          return Module.kriStorageState?Math.round(Module.kriStorageState.quota/1048576):0;
+        });
+        int persistent=EM_ASM_INT({
+          return Module.kriStorageState && Module.kriStorageState.persistent?1:0;
+        });
+        if (quotaMiB>0) {
+          ImGui::TextDisabled(_("%d mib of %d mib used · %s storage"),usageMiB,quotaMiB,persistent?"persistent":"browser-managed");
+        } else {
+          ImGui::TextDisabled(_("storage quota unavailable · %s storage"),persistent?"persistent":"browser-managed");
+        }
+        ImGui::Spacing();
+#endif
         if (ImGui::Button(_("recover project..."))) {
           openFileDialog(GUI_FILE_OPEN_BACKUP);
         }
@@ -6817,7 +6846,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
   sty.Colors[ImGuiCol_FrameBgHovered]=kriSurfaceHover;
   sty.Colors[ImGuiCol_FrameBgActive]=kriSurfaceActive;
   sty.Colors[ImGuiCol_TitleBg]=kriBase;
-  sty.Colors[ImGuiCol_TitleBgActive]=kriRaised;
+  sty.Colors[ImGuiCol_TitleBgActive]=kriBase;
   sty.Colors[ImGuiCol_TitleBgCollapsed]=kriBase;
   sty.Colors[ImGuiCol_MenuBarBg]=kriBase;
   sty.Colors[ImGuiCol_ScrollbarBg]=kriDB16Color(0x140c1c,0.65f);
@@ -6840,10 +6869,10 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
   sty.Colors[ImGuiCol_ResizeGripHovered]=kriWarm;
   sty.Colors[ImGuiCol_ResizeGripActive]=kriAccent;
   sty.Colors[ImGuiCol_Tab]=kriSurface;
-  sty.Colors[ImGuiCol_TabHovered]=kriSurfaceHover;
-  sty.Colors[ImGuiCol_TabActive]=kriSurfaceActive;
+  sty.Colors[ImGuiCol_TabHovered]=kriSurfaceActive;
+  sty.Colors[ImGuiCol_TabActive]=kriSurfaceHover;
   sty.Colors[ImGuiCol_TabUnfocused]=kriBase;
-  sty.Colors[ImGuiCol_TabUnfocusedActive]=kriRaised;
+  sty.Colors[ImGuiCol_TabUnfocusedActive]=kriSurfaceHover;
   sty.Colors[ImGuiCol_DockingPreview]=ImVec4(kriAccent.x,kriAccent.y,kriAccent.z,0.55f);
   sty.Colors[ImGuiCol_DockingEmptyBg]=kriBase;
   sty.Colors[ImGuiCol_TableHeaderBg]=kriRaised;

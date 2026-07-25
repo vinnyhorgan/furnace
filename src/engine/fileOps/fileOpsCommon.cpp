@@ -139,6 +139,18 @@ bool DivEngine::load(unsigned char* f, size_t slen, const char* nameHint) {
     len=slen;
   }
 
+  // kri projects deliberately accept only the native song format. Besides
+  // keeping the product focused, this lets the web linker discard the legacy
+  // module importers that are otherwise reachable from this function.
+#ifdef FURNACE_KRI_ONLY
+  if (memcmp(file,DIV_FUR_MAGIC,16)==0) {
+    return loadFur(file,len);
+  }
+  logE("not a valid kri project!");
+  lastError="not a compatible kri project";
+  delete[] file;
+  return false;
+#else
   // step 2: try loading as .fur, .dmf, or another magic-ful format
   if (memcmp(file,DIV_DMF_MAGIC,16)==0) {
     return loadDMF(file,len); 
@@ -177,4 +189,5 @@ bool DivEngine::load(unsigned char* f, size_t slen, const char* nameHint) {
   lastError="not a compatible song";
   delete[] file;
   return false;
+#endif
 }

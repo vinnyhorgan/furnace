@@ -1,8 +1,6 @@
 Module.preRun = Module.preRun || [];
 Module.preRun.push(() => {
   const home = '/home/web_user';
-  const storageIndicator = document.getElementById('storage-indicator');
-  const storageText = document.getElementById('storage-text');
   const storageState = {
     ready: false,
     dirty: false,
@@ -13,40 +11,9 @@ Module.preRun.push(() => {
     quota: 0,
     persistent: false
   };
-  const formatBytes = (bytes) => {
-    if (!bytes) return '0 b';
-    const units = ['b', 'kb', 'mb', 'gb'];
-    const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    return `${(bytes / (1024 ** unit)).toFixed(unit ? 1 : 0)} ${units[unit]}`;
-  };
+  Module.kriStorageState = storageState;
   const renderStorageState = () => {
-    if (!storageState.ready) return;
-    storageIndicator.hidden = false;
-    let state;
-    let label;
-    if (storageState.error) {
-      state = 'error';
-      label = 'local save failed';
-    } else if (storageState.syncing) {
-      state = 'saving';
-      label = 'saving locally…';
-    } else if (storageState.dirty) {
-      state = 'dirty';
-      label = 'unsaved · recovery on';
-    } else {
-      state = 'saved';
-      label = 'saved locally';
-    }
-    storageIndicator.dataset.state = state;
-    storageText.textContent = label;
-    const quota = storageState.quota
-      ? `${formatBytes(storageState.usage)} of ${formatBytes(storageState.quota)} used`
-      : 'storage quota unavailable';
-    const lastSync = storageState.lastSync
-      ? `last local sync ${new Date(storageState.lastSync).toLocaleTimeString()}`
-      : 'not synced yet';
-    const persistence = storageState.persistent ? 'persistent storage granted' : 'browser-managed storage';
-    storageIndicator.title = storageState.error || `${lastSync} · ${quota} · ${persistence} · click to download recovery archive`;
+    Module.kriStorageState = storageState;
   };
   const refreshStorageEstimate = async () => {
     if (!navigator.storage || !navigator.storage.estimate) return;
@@ -151,8 +118,6 @@ Module.preRun.push(() => {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
-  storageIndicator.addEventListener('click',Module.kriDownloadRecoveryArchive);
-
   FS.mkdirTree(home);
   FS.mount(IDBFS, {}, home);
   addRunDependency('kri-idbfs');

@@ -1092,12 +1092,21 @@ bool DivEngine::loadFur(unsigned char* file, size_t len, int variantID) {
 
     if (variantID!=DIV_FUR_VARIANT_VANILLA) {
       logW("Furnace variant detected: %d",variantID);
+#ifdef FURNACE_KRI_ONLY
+      addWarning("this project was created by a downstream build. certain features may not be compatible.");
+#else
       addWarning("this module was created with a downstream version of Furnace. certain features may not be compatible.");
+#endif
     }
 
     if (ds.version>DIV_ENGINE_VERSION) {
+#ifdef FURNACE_KRI_ONLY
+      logW("this project was created with a more recent upstream version!");
+      addWarning("this project was created with a more recent upstream version!");
+#else
       logW("this module was created with a more recent version of Furnace!");
       addWarning("this module was created with a more recent version of Furnace!");
+#endif
     }
 
     if (ds.version<37) { // compat flags not stored back then

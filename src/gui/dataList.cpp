@@ -448,10 +448,12 @@ void FurnaceGUI::drawInsList(bool asChild) {
         if (ImGui::MenuItem(_("replace..."))) {
           doAction((curIns>=0 && curIns<(int)e->song.ins.size())?GUI_ACTION_INS_LIST_OPEN_REPLACE:GUI_ACTION_INS_LIST_OPEN);
         }
+#ifndef FURNACE_KRI_ONLY
         ImGui::Separator();
         if (ImGui::MenuItem(_("load from TX81Z"))) {
           doAction(GUI_ACTION_TX81Z_REQUEST);
         }
+#endif
       }
       ImGui::EndPopup();
     }

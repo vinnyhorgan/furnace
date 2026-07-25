@@ -661,11 +661,13 @@ void FurnaceGUI::updateWindowTitle() {
   }
 #endif
 
+#ifndef FURNACE_KRI_ONLY
   if (settings.titleBarSys) {
     if (e->song.systemName!="") {
       title+=fmt::sprintf(" (%s)",e->song.systemName);
     }
   }
+#endif
 
   if (sdlWin!=NULL) SDL_SetWindowTitle(sdlWin,title.c_str());
 
@@ -1867,6 +1869,13 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
       *prevInsData=*e->getIns(curIns);
       if (!dirExists(workingDirIns)) workingDirIns=getHomeDir();
       hasOpened=fileDialog->openLoad(
+#ifdef FURNACE_KRI_ONLY
+        _("load instrument"),
+        {_("compatible opm instruments"), "*.fui *.dmp *.tfi *.vgi *.y12 *.gyb *.opm",
+         _("kri instrument"), "*.fui",
+         _("opm voice"), "*.opm",
+         _("all files"), "*"},
+#else
         _("Load Instrument"),
         {_("all compatible files"), "*.fui *.dmp *.tfi *.vgi *.s3i *.sbi *.opli *.opni *.y12 *.bnk *.ff *.gyb *.opm *.wopl *.wopn",
          _("Furnace instrument"), "*.fui",
@@ -1885,6 +1894,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
          _("Wohlstand WOPL bank"), "*.wopl",
          _("Wohlstand WOPN bank"), "*.wopn",
          _("all files"), "*"},
+#endif
         workingDirIns,
         dpiScale,
         [this](const char* path) {
@@ -1917,8 +1927,13 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
     case GUI_FILE_INS_SAVE:
       if (!dirExists(workingDirIns)) workingDirIns=getHomeDir();
       hasOpened=fileDialog->openSave(
+#ifdef FURNACE_KRI_ONLY
+        _("save instrument"),
+        {_("kri instrument"), "*.fui"},
+#else
         _("Save Instrument"),
         {_("Furnace instrument"), "*.fui"},
+#endif
         workingDirIns,
         dpiScale,
         (settings.autoFillSave)?e->getIns(curIns)->name:""
@@ -3619,7 +3634,9 @@ void FurnaceGUI::processPoint(SDL_Event& ev) {
 }
 
 void FurnaceGUI::pointDown(int x, int y, int button) {
+#ifndef FURNACE_KRI_ONLY
   aboutOpen=false;
+#endif
   if (bindSetActive) {
     bindSetActive=false;
     bindSetPending=false;
@@ -3779,7 +3796,9 @@ bool FurnaceGUI::loop() {
   DECLARE_METRIC(mobileOrderSel)
   DECLARE_METRIC(subSongs)
   DECLARE_METRIC(findReplace)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(spoiler)
+#endif
   DECLARE_METRIC(pattern)
   DECLARE_METRIC(editControls)
   DECLARE_METRIC(speed)
@@ -3789,34 +3808,46 @@ bool FurnaceGUI::loop() {
 #ifndef NO_INTRO
   DECLARE_METRIC(intro)
 #endif
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(sampleList)
   DECLARE_METRIC(sampleEdit)
   DECLARE_METRIC(waveList)
   DECLARE_METRIC(waveEdit)
+#endif
   DECLARE_METRIC(insList)
   DECLARE_METRIC(insEdit)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(mixer)
+#endif
   DECLARE_METRIC(readOsc)
   DECLARE_METRIC(osc)
   DECLARE_METRIC(chanOsc)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(xyOsc)
+#endif
   DECLARE_METRIC(volMeter)
   DECLARE_METRIC(settings)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(debug)
   DECLARE_METRIC(csPlayer)
   DECLARE_METRIC(stats)
   DECLARE_METRIC(memory)
   DECLARE_METRIC(compatFlags)
+#endif
   DECLARE_METRIC(piano)
   DECLARE_METRIC(notes)
   DECLARE_METRIC(channels)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(patManager)
   DECLARE_METRIC(sysManager)
   DECLARE_METRIC(clock)
   DECLARE_METRIC(regView)
   DECLARE_METRIC(log)
+#endif
   DECLARE_METRIC(effectList)
+#ifndef FURNACE_KRI_ONLY
   DECLARE_METRIC(userPresets)
+#endif
   DECLARE_METRIC(popup)
 
 #ifdef IS_MOBILE
@@ -3836,7 +3867,11 @@ bool FurnaceGUI::loop() {
   }
 
   if (safeMode) {
+#ifdef FURNACE_KRI_ONLY
+    showError(_("kri has started in safe mode.\nthis means that:\n\n- software rendering is being used\n- audio output may not work\n- font loading is disabled\n\ncheck any settings which may have made kri start in this mode."));
+#else
     showError(_("Furnace has been started in Safe Mode.\nthis means that:\n\n- software rendering is being used\n- audio output may not work\n- font loading is disabled\n\ncheck any settings which may have made Furnace start up in this mode.\nfont loading is one of these."));
+#endif
     settingsOpen=true;
   }
 #ifdef __EMSCRIPTEN__
@@ -4361,7 +4396,11 @@ bool FurnaceGUI::loop() {
       }
 
       if (initAttempts>5) {
+#ifdef FURNACE_KRI_ONLY
+        reportError(_("can't keep going without graphics! kri will quit now."));
+#else
         reportError(_("can't keep going without graphics! Furnace will quit now."));
+#endif
         quit=true;
         break;
       }
@@ -4912,7 +4951,9 @@ bool FurnaceGUI::loop() {
         ImGui::EndMenu();
       }
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Help"):_("help"))) {
+#ifndef FURNACE_KRI_ONLY
         if (ImGui::MenuItem(_("effect list"),BIND_FOR(GUI_ACTION_WINDOW_EFFECT_LIST),effectListOpen)) effectListOpen=!effectListOpen;
+#endif
 #ifndef FURNACE_KRI_ONLY
         if (ImGui::MenuItem(_("debug menu"),BIND_FOR(GUI_ACTION_WINDOW_DEBUG))) debugOpen=!debugOpen;
         if (ImGui::MenuItem(_("inspector"))) inspectorOpen=!inspectorOpen;
@@ -5071,6 +5112,7 @@ bool FurnaceGUI::loop() {
           MEASURE(insEdit,drawInsEdit());
           MEASURE(piano,drawPiano());
           break;
+#ifndef FURNACE_KRI_ONLY
         case GUI_SCENE_WAVETABLE:
           waveEditOpen=true;
           curWindow=GUI_WINDOW_WAVE_EDIT;
@@ -5098,6 +5140,7 @@ bool FurnaceGUI::loop() {
           curWindow=GUI_WINDOW_MIXER;
           MEASURE(mixer,drawMixer());
           break;
+#endif
         default:
           patternOpen=true;
           curWindow=GUI_WINDOW_PATTERN;
@@ -5112,6 +5155,7 @@ bool FurnaceGUI::loop() {
 
       globalWinFlags=0;
       MEASURE(settings,drawSettings());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(debug,drawDebug());
       MEASURE(csPlayer,drawCSPlayer());
       MEASURE(log,drawLog());
@@ -5128,49 +5172,71 @@ bool FurnaceGUI::loop() {
       MEASURE(effectList,drawEffectList());
       MEASURE(userPresets,drawUserPresets());
       MEASURE(patManager,drawPatManager());
+#else
+      MEASURE(readOsc,readOsc());
+      MEASURE(osc,drawOsc());
+      MEASURE(chanOsc,drawChanOsc());
+      MEASURE(volMeter,drawVolMeter());
+      MEASURE(grooves,drawGrooves());
+      MEASURE(effectList,drawEffectList());
+#endif
     } else {
       globalWinFlags=0;
       ImGui::DockSpaceOverViewport(NULL,lockLayout?(ImGuiDockNodeFlags_NoWindowMenuButton|ImGuiDockNodeFlags_NoMove|ImGuiDockNodeFlags_NoResize|ImGuiDockNodeFlags_NoCloseButton|ImGuiDockNodeFlags_NoDocking|ImGuiDockNodeFlags_NoDockingSplitMe|ImGuiDockNodeFlags_NoDockingSplitOther):0);
 
       MEASURE(subSongs,drawSubSongs());
       MEASURE(findReplace,drawFindReplace());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(spoiler,drawSpoiler());
+#endif
       MEASURE(pattern,drawPattern());
       MEASURE(editControls,drawEditControls());
       MEASURE(speed,drawSpeed());
       MEASURE(grooves,drawGrooves());
       MEASURE(songInfo,drawSongInfo());
       MEASURE(orders,drawOrders());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(sampleList,drawSampleList());
       MEASURE(sampleEdit,drawSampleEdit());
       MEASURE(waveList,drawWaveList());
       MEASURE(waveEdit,drawWaveEdit());
+#endif
       MEASURE(insList,drawInsList());
       MEASURE(insEdit,drawInsEdit());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(mixer,drawMixer());
+#endif
 
       MEASURE(readOsc,readOsc());
 
       MEASURE(osc,drawOsc());
       MEASURE(chanOsc,drawChanOsc());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(xyOsc,drawXYOsc());
+#endif
       MEASURE(volMeter,drawVolMeter());
       MEASURE(settings,drawSettings());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(debug,drawDebug());
       MEASURE(csPlayer,drawCSPlayer());
       MEASURE(stats,drawStats());
       MEASURE(memory,drawMemory());
       MEASURE(compatFlags,drawCompatFlags());
+#endif
       MEASURE(piano,drawPiano());
       MEASURE(notes,drawNotes());
       MEASURE(channels,drawChannels());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(patManager,drawPatManager());
       MEASURE(sysManager,drawSysManager());
       MEASURE(clock,drawClock());
       MEASURE(regView,drawRegView());
       MEASURE(log,drawLog());
+#endif
       MEASURE(effectList,drawEffectList());
+#ifndef FURNACE_KRI_ONLY
       MEASURE(userPresets,drawUserPresets());
+#endif
     }
 
     // release selection if mouse released
@@ -7760,9 +7826,17 @@ bool FurnaceGUI::init() {
       settings.renderBackend="Software";
       e->setConf("renderBackend","Software");
       e->saveConf();
+#ifdef FURNACE_KRI_ONLY
+      lastError=fmt::sprintf(_("could not init renderer!\nfalling back to software renderer. please restart kri."));
+#else
       lastError=fmt::sprintf(_("could not init renderer!\nfalling back to software renderer. please restart Furnace."));
+#endif
     } else if (settings.renderBackend=="SDL") {
+#ifdef FURNACE_KRI_ONLY
+      lastError=fmt::sprintf(_("could not init renderer! %s\nfalling back to software renderer. please restart kri."),SDL_GetError());
+#else
       lastError=fmt::sprintf(_("could not init renderer! %s\nfalling back to software renderer. please restart Furnace."),SDL_GetError());
+#endif
       settings.renderBackend="Software";
       e->setConf("renderBackend","Software");
       e->saveConf();
@@ -7787,7 +7861,11 @@ bool FurnaceGUI::init() {
       settings.renderBackend="Software";
       e->setConf("renderBackend","Software");
       e->saveConf();
+#ifdef FURNACE_KRI_ONLY
+      lastError+=_("\nfalling back to software renderer. please restart kri.");
+#else
       lastError+=_("\nfalling back to software renderer. please restart Furnace.");
+#endif
     }
     return false;
   }
@@ -7872,9 +7950,17 @@ bool FurnaceGUI::init() {
       settings.renderBackend="Software";
       e->setConf("renderBackend","Software");
       e->saveConf();
+#ifdef FURNACE_KRI_ONLY
+      lastError=fmt::sprintf(_("could not init renderer!\nfalling back to software renderer. please restart kri."));
+#else
       lastError=fmt::sprintf(_("could not init renderer!\nfalling back to software renderer. please restart Furnace."));
+#endif
     } else if (settings.renderBackend=="SDL") {
+#ifdef FURNACE_KRI_ONLY
+      lastError=fmt::sprintf(_("could not init renderer! %s\nfalling back to software renderer. please restart kri."),SDL_GetError());
+#else
       lastError=fmt::sprintf(_("could not init renderer! %s\nfalling back to software renderer. please restart Furnace."),SDL_GetError());
+#endif
       settings.renderBackend="Software";
       e->setConf("renderBackend","Software");
       e->saveConf();
